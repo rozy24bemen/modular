@@ -5,7 +5,8 @@ import { ChatPanel } from './components/ChatPanel';
 import { AvatarCustomizer } from './components/AvatarCustomizer';
 import { NavigationPanel } from './components/NavigationPanel';
 import { Toolbar } from './components/Toolbar';
-import { Hammer, Users } from 'lucide-react';
+import { Hammer, Users, Wifi, WifiOff } from 'lucide-react';
+import { useMultiplayer } from './hooks/useMultiplayer';
 
 export type Mode = 'explore' | 'build';
 export type Shape = 'square' | 'circle' | 'triangle';
@@ -111,22 +112,26 @@ export default function App() {
   ]);
 
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    {
-      id: '1',
-      userId: 'user1',
-      userName: 'Player1',
-      message: '¡Hola! Bienvenido a la plaza',
-      timestamp: Date.now() - 60000,
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+
+  // Multiplayer hook
+  const {
+    isConnected,
+    emitMove,
+    emitChat,
+    emitModuleCreate,
+    emitModuleUpdate,
+    emitModuleDelete,
+    emitAvatarUpdate,
+  } = useMultiplayer({
+    playerAvatar,
+    currentCoords,
+    onPlayersUpdate: setOtherAvatars,
+    onModulesUpdate: setModules,
+    onChatMessage: (message) => {
+      setChatMessages(prev => [...prev, message]);
     },
-    {
-      id: '2',
-      userId: 'user2',
-      userName: 'Builder99',
-      message: 'Mira lo que construí!',
-      timestamp: Date.now() - 30000,
-    },
-  ]);
+  });
 
   // Initialize with fixed positions for multiplayer consistency
   useEffect(() => {
@@ -228,27 +233,30 @@ export default function App() {
     };
     setModules([...modules, newModule]);
     setSelectedModule(newModule);
+    
+    // Emit to multiplayer server
+    emitModuleCreate(newModule);
   };
 
   const handleUpdateModule = (updatedModule: Module) => {
     setModules(modules.map(m => m.id === updatedModule.id ? updatedModule : m));
     setSelectedModule(updatedModule);
+    
+    // Emit to multiplayer server
+    emitModuleUpdate(updatedModule);
   };
 
   const handleDeleteModule = (id: string) => {
     setModules(modules.filter(m => m.id !== id));
     setSelectedModule(null);
+    
+    // Emit to multiplayer server
+    emitModuleDelete(id);
   };
 
   const handleSendMessage = (message: string) => {
-    const newMessage: ChatMessage = {
-      id: Date.now().toString(),
-      userId: 'player',
-      userName: playerAvatar.name,
-      message,
-      timestamp: Date.now(),
-    };
-    setChatMessages([...chatMessages, newMessage]);
+    // Emit to multiplayer server
+    emitChat(message);
     
     // Add chat bubble to player avatar
     setPlayerAvatar({
@@ -258,34 +266,13 @@ export default function App() {
         timestamp: Date.now(),
       },
     });
-
-    // Simulate other players responding
-    if (Math.random() > 0.7) {
-      setTimeout(() => {
-        const responder = otherAvatars[Math.floor(Math.random() * otherAvatars.length)];
-        const responses = ['jaja!', '¡Genial!', 'Me gusta 👍', '¿En serio?', 'Wow'];
-        const response = responses[Math.floor(Math.random() * responses.length)];
-        
-        const responseMsg: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          userId: responder.id,
-          userName: responder.name,
-          message: response,
-          timestamp: Date.now(),
-        };
-        setChatMessages(prev => [...prev, responseMsg]);
-        
-        setOtherAvatars(prev => prev.map(a => 
-          a.id === responder.id 
-            ? { ...a, chatBubble: { message: response, timestamp: Date.now() } }
-            : a
-        ));
-      }, 1000 + Math.random() * 2000);
-    }
   };
 
   const handleMoveAvatar = (x: number, y: number) => {
     setPlayerAvatar({ ...playerAvatar, x, y });
+    
+    // Emit to multiplayer server
+    emitMove(x, y);
   };
 
   const handleCheckRoomTransition = (x: number, y: number) => {
@@ -393,6 +380,16 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Connection status */}
+          <div className={`px-3 py-2 rounded-lg flex items-center gap-2 text-sm ${
+            isConnected 
+              ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+              : 'bg-red-500/20 text-red-400 border border-red-500/30'
+          }`}>
+            {isConnected ? <Wifi size={14} /> : <WifiOff size={14} />}
+            {isConnected ? 'Conectado' : 'Desconectado'}
+          </div>
+          
           <button
             onClick={() => setShowNavigation(!showNavigation)}
             className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg flex items-center gap-2 transition-colors"
@@ -463,7 +460,10 @@ export default function App() {
       {showAvatarCustomizer && (
         <AvatarCustomizer
           avatar={playerAvatar}
-          onUpdate={setPlayerAvatar}
+          onUpdate={(updatedAvatar) => {
+            setPlayerAvatar(updatedAvatar);
+            emitAvatarUpdate(updatedAvatar);
+          }}
           onClose={() => setShowAvatarCustomizer(false)}
         />
       )}
