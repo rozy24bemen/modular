@@ -156,7 +156,8 @@ export default function App() {
           color: '#10b981',
           headShape: 'triangle',
         },
-      ]);\n      
+      ]);
+      
       // Position modules relative to center
       setModules([
         {
