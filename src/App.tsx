@@ -128,6 +128,59 @@ export default function App() {
     },
   ]);
 
+  // Initialize responsive positions on mount
+  useEffect(() => {
+    const canvas = document.querySelector('.world-canvas-container');
+    if (canvas) {
+      const centerX = canvas.clientWidth / 2;
+      const centerY = canvas.clientHeight / 2;
+      
+      // Center player avatar
+      setPlayerAvatar(prev => ({ ...prev, x: centerX, y: centerY }));
+      
+      // Position other avatars relative to center
+      setOtherAvatars([
+        {
+          id: 'user1',
+          name: 'Player1',
+          x: centerX - 100,
+          y: centerY - 100,
+          color: '#ef4444',
+          headShape: 'square',
+        },
+        {
+          id: 'user2',
+          name: 'Builder99',
+          x: centerX + 100,
+          y: centerY + 100,
+          color: '#10b981',
+          headShape: 'triangle',
+        },
+      ]);\n      
+      // Position modules relative to center
+      setModules([
+        {
+          id: '1',
+          x: centerX - 200,
+          y: centerY - 100,
+          shape: 'square',
+          size: 50,
+          color: '#8b5cf6',
+          behavior: 'button',
+        },
+        {
+          id: '2',
+          x: centerX + 200,
+          y: centerY,
+          shape: 'circle',
+          size: 40,
+          color: '#f59e0b',
+          behavior: 'teleport',
+        },
+      ]);
+    }
+  }, []);
+
   // Clear chat bubbles after 5 seconds
   useEffect(() => {
     const interval = setInterval(() => {
@@ -237,30 +290,41 @@ export default function App() {
   };
 
   const handleCheckRoomTransition = (x: number, y: number) => {
-    const canvasWidth = 800;
-    const canvasHeight = 600;
-    const edgeThreshold = 10;
+    // Get dynamic canvas size
+    const canvas = document.querySelector('.world-canvas-container');
+    if (!canvas) return;
+    
+    const canvasWidth = canvas.clientWidth;
+    const canvasHeight = canvas.clientHeight;
+    const edgeThreshold = 20; // Match the visual border
 
     let newCoords = { ...currentCoords };
     let newX = x;
     let newY = y;
     let shouldTransition = false;
 
+    // Right edge
     if (x > canvasWidth - edgeThreshold) {
       newCoords.x += 1;
-      newX = edgeThreshold + 5;
+      newX = edgeThreshold + 10;
       shouldTransition = true;
-    } else if (x < edgeThreshold) {
+    } 
+    // Left edge
+    else if (x < edgeThreshold) {
       newCoords.x -= 1;
-      newX = canvasWidth - edgeThreshold - 5;
+      newX = canvasWidth - edgeThreshold - 10;
       shouldTransition = true;
-    } else if (y < edgeThreshold) {
+    } 
+    // Top edge
+    else if (y < edgeThreshold) {
       newCoords.y -= 1;
-      newY = canvasHeight - edgeThreshold - 5;
+      newY = canvasHeight - edgeThreshold - 10;
       shouldTransition = true;
-    } else if (y > canvasHeight - edgeThreshold) {
+    } 
+    // Bottom edge
+    else if (y > canvasHeight - edgeThreshold) {
       newCoords.y += 1;
-      newY = edgeThreshold + 5;
+      newY = edgeThreshold + 10;
       shouldTransition = true;
     }
 
@@ -273,26 +337,31 @@ export default function App() {
     setCurrentCoords(newCoords);
     setPlayerAvatar({ ...playerAvatar, x: newX, y: newY });
     
+    // Get canvas dimensions for responsive positioning
+    const canvas = document.querySelector('.world-canvas-container');
+    const centerX = canvas ? canvas.clientWidth / 2 : 400;
+    const centerY = canvas ? canvas.clientHeight / 2 : 300;
+    
     // Load different content based on room
     // In a real app, this would load from a database
     if (newCoords.x === 0 && newCoords.y === 0) {
       // Plaza Central - populated
       setOtherAvatars([
-        { id: 'user1', name: 'Player1', x: 300, y: 200, color: '#ef4444', headShape: 'square' },
-        { id: 'user2', name: 'Builder99', x: 500, y: 400, color: '#10b981', headShape: 'triangle' },
+        { id: 'user1', name: 'Player1', x: centerX - 100, y: centerY - 100, color: '#ef4444', headShape: 'square' },
+        { id: 'user2', name: 'Builder99', x: centerX + 100, y: centerY + 100, color: '#10b981', headShape: 'triangle' },
       ]);
       setModules([
-        { id: '1', x: 200, y: 200, shape: 'square', size: 50, color: '#8b5cf6', behavior: 'button' },
-        { id: '2', x: 600, y: 300, shape: 'circle', size: 40, color: '#f59e0b', behavior: 'teleport' },
+        { id: '1', x: centerX - 200, y: centerY - 100, shape: 'square', size: 50, color: '#8b5cf6', behavior: 'button' },
+        { id: '2', x: centerX + 200, y: centerY, shape: 'circle', size: 40, color: '#f59e0b', behavior: 'teleport' },
       ]);
     } else if (newCoords.x === 1 && newCoords.y === 0) {
       // Zona Creativa
       setOtherAvatars([
-        { id: 'user3', name: 'Artist22', x: 400, y: 300, color: '#a855f7', headShape: 'circle' },
+        { id: 'user3', name: 'Artist22', x: centerX, y: centerY, color: '#a855f7', headShape: 'circle' },
       ]);
       setModules([
-        { id: '3', x: 150, y: 150, shape: 'triangle', size: 60, color: '#ec4899', behavior: 'none' },
-        { id: '4', x: 400, y: 400, shape: 'square', size: 80, color: '#14b8a6', behavior: 'platform' },
+        { id: '3', x: centerX - 150, y: centerY - 150, shape: 'triangle', size: 60, color: '#ec4899', behavior: 'none' },
+        { id: '4', x: centerX, y: centerY + 100, shape: 'square', size: 80, color: '#14b8a6', behavior: 'platform' },
       ]);
     } else {
       // Empty or new room
@@ -304,9 +373,14 @@ export default function App() {
   };
 
   const handleNavigateToRoom = (coords: RoomCoords) => {
+    // Get canvas dimensions for centering avatar
+    const canvas = document.querySelector('.world-canvas-container');
+    const centerX = canvas ? canvas.clientWidth / 2 : 400;
+    const centerY = canvas ? canvas.clientHeight / 2 : 300;
+    
     setCurrentCoords(coords);
-    setPlayerAvatar({ ...playerAvatar, x: 400, y: 300 });
-    handleRoomChange(coords, 400, 300);
+    setPlayerAvatar({ ...playerAvatar, x: centerX, y: centerY });
+    handleRoomChange(coords, centerX, centerY);
     setShowNavigation(false);
   };
 
@@ -355,7 +429,7 @@ export default function App() {
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* World Canvas */}
-        <div className="flex-1 relative">
+        <div className="flex-1 relative world-canvas-container">
           <WorldCanvas
             mode={mode}
             playerAvatar={playerAvatar}

@@ -29,6 +29,23 @@ export function WorldCanvas({
   const [keys, setKeys] = useState<Set<string>>(new Set());
   const [hoveredAvatar, setHoveredAvatar] = useState<string | null>(null);
   const [targetPosition, setTargetPosition] = useState<{ x: number; y: number } | null>(null);
+  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
+
+  // Update canvas size on resize
+  useEffect(() => {
+    const updateSize = () => {
+      if (canvasRef.current) {
+        setCanvasSize({
+          width: canvasRef.current.clientWidth,
+          height: canvasRef.current.clientHeight,
+        });
+      }
+    };
+
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, []);
 
   // Keyboard movement
   useEffect(() => {
@@ -309,6 +326,37 @@ export function WorldCanvas({
       }}
     >
       <svg className="w-full h-full">
+        {/* Room boundaries with visible borders */}
+        <rect
+          x={20}
+          y={20}
+          width={canvasSize.width - 40}
+          height={canvasSize.height - 40}
+          fill="none"
+          stroke="rgba(139, 92, 246, 0.3)"
+          strokeWidth={2}
+          strokeDasharray="10 5"
+        />
+        
+        {/* Edge indicators for room transitions */}
+        <g opacity={0.5}>
+          {/* Top edge */}
+          <rect x={20} y={10} width={canvasSize.width - 40} height={10} fill="rgba(139, 92, 246, 0.2)" rx={2} />
+          <text x={canvasSize.width / 2} y={17} textAnchor="middle" fill="rgba(255, 255, 255, 0.6)" fontSize="10">↑</text>
+          
+          {/* Bottom edge */}
+          <rect x={20} y={canvasSize.height - 20} width={canvasSize.width - 40} height={10} fill="rgba(139, 92, 246, 0.2)" rx={2} />
+          <text x={canvasSize.width / 2} y={canvasSize.height - 13} textAnchor="middle" fill="rgba(255, 255, 255, 0.6)" fontSize="10">↓</text>
+          
+          {/* Left edge */}
+          <rect x={10} y={20} width={10} height={canvasSize.height - 40} fill="rgba(139, 92, 246, 0.2)" rx={2} />
+          <text x={15} y={canvasSize.height / 2} textAnchor="middle" fill="rgba(255, 255, 255, 0.6)" fontSize="10" transform={`rotate(-90 15 ${canvasSize.height / 2})`}>←</text>
+          
+          {/* Right edge */}
+          <rect x={canvasSize.width - 20} y={20} width={10} height={canvasSize.height - 40} fill="rgba(139, 92, 246, 0.2)" rx={2} />
+          <text x={canvasSize.width - 15} y={canvasSize.height / 2} textAnchor="middle" fill="rgba(255, 255, 255, 0.6)" fontSize="10" transform={`rotate(-90 ${canvasSize.width - 15} ${canvasSize.height / 2})`}>→</text>
+        </g>
+        
         {/* Render modules */}
         {modules.map(renderModule)}
         
