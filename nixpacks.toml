@@ -3,12 +3,10 @@ nixPkgs = ['nodejs_18']
 
 [phases.install]
 cmds = [
-  'npm install',
+  'npm ci',
   'npm run build',
-  'cd server && npm install'
+  'cd server && npm ci'
 ]
-
-[phases.build]
 
 [start]
 cmd = 'node server/index-unified.js'
