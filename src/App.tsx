@@ -6,6 +6,7 @@ import { AvatarCustomizer } from './components/AvatarCustomizer';
 import { NavigationPanel } from './components/NavigationPanel';
 import { Toolbar } from './components/Toolbar';
 import { AuthDialog } from './components/AuthDialog';
+import { MigrationAlert } from './components/MigrationAlert';
 import { Hammer, Users, Wifi, WifiOff, LogIn, LogOut } from 'lucide-react';
 import { useMultiplayer } from './hooks/useMultiplayer';
 import { useAuth } from './contexts/AuthContext';
@@ -377,6 +378,8 @@ export default function App() {
 
   return (
     <div className="w-screen h-screen bg-slate-900 flex flex-col overflow-hidden">
+      {/* Migration Alert */}
+      <MigrationAlert />
       {/* Header */}
       <header className="bg-slate-800 border-b border-slate-700 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">

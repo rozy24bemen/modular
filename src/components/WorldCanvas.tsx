@@ -35,6 +35,7 @@ export function WorldCanvas({
   onCancelModule,
 }: WorldCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
   const [keys, setKeys] = useState<Set<string>>(new Set());
   const [hoveredAvatar, setHoveredAvatar] = useState<string | null>(null);
   const [targetPosition, setTargetPosition] = useState<{ x: number; y: number } | null>(null);
@@ -42,6 +43,22 @@ export function WorldCanvas({
   // Fixed world dimensions for consistent multiplayer experience
   const WORLD_WIDTH = 800;
   const WORLD_HEIGHT = 600;
+
+  // Helper function to convert client coordinates to SVG coordinates (handles scaling/responsive)
+  const clientToSVGCoords = (clientX: number, clientY: number): { x: number, y: number } | null => {
+    const svg = svgRef.current;
+    if (!svg) return null;
+
+    const point = svg.createSVGPoint();
+    point.x = clientX;
+    point.y = clientY;
+    
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return null;
+    
+    const svgPoint = point.matrixTransform(ctm.inverse());
+    return { x: svgPoint.x, y: svgPoint.y };
+  };
 
   // Keyboard movement
   useEffect(() => {
@@ -110,18 +127,18 @@ export function WorldCanvas({
     return () => clearInterval(interval);
   }, [mode, keys, playerAvatar, targetPosition, onMoveAvatar, onCheckRoomTransition]);
 
-  const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (!rect) return;
+  const handleCanvasClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    // Convert client coordinates to SVG coordinates (handles responsive scaling)
+    const coords = clientToSVGCoords(e.clientX, e.clientY);
+    if (!coords) return;
 
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const { x, y } = coords;
 
     if (mode === 'build') {
       // Check if clicking on existing module
       const clickedModule = modules.find(m => {
         const distance = Math.sqrt(Math.pow(x - m.x, 2) + Math.pow(y - m.y, 2));
-        return distance < m.size / 2 + 10;
+        return distance < Math.max(m.width, m.height) / 2 + 10;
       });
 
       if (clickedModule) {
@@ -311,7 +328,6 @@ export function WorldCanvas({
   return (
     <div
       ref={canvasRef}
-      onClick={handleCanvasClick}
       className="w-full h-full bg-slate-800 relative cursor-crosshair"
       style={{
         backgroundImage: `
@@ -321,7 +337,13 @@ export function WorldCanvas({
         backgroundSize: '20px 20px',
       }}
     >
-      <svg className="w-full h-full" viewBox={`0 0 ${WORLD_WIDTH} ${WORLD_HEIGHT}`} preserveAspectRatio="xMidYMid meet">
+      <svg 
+        ref={svgRef}
+        className="w-full h-full" 
+        viewBox={`0 0 ${WORLD_WIDTH} ${WORLD_HEIGHT}`} 
+        preserveAspectRatio="xMidYMid meet"
+        onClick={handleCanvasClick}
+      >
         {/* Room boundaries with visible borders */}
         <rect
           x={20}

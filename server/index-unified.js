@@ -447,6 +447,110 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Verify and migrate database schema
+app.post('/api/migrate', async (req, res) => {
+  try {
+    console.log('🔧 Running database migration...');
+    
+    // Check if columns exist
+    const { data: columns, error: columnError } = await supabase
+      .rpc('exec', {
+        sql: `
+          SELECT column_name 
+          FROM information_schema.columns 
+          WHERE table_name = 'modules' 
+          AND column_name IN ('width', 'height')
+        `
+      });
+    
+    if (columnError) {
+      console.error('Error checking columns:', columnError);
+      // If RPC doesn't exist, try direct SQL (will fail gracefully)
+    }
+
+    // Try to add columns if they don't exist
+    const migrationSQL = `
+      DO $$ 
+      BEGIN
+        -- Add width column if not exists
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'modules' AND column_name = 'width'
+        ) THEN
+          ALTER TABLE modules ADD COLUMN width FLOAT;
+          UPDATE modules SET width = size WHERE width IS NULL;
+          ALTER TABLE modules ALTER COLUMN width SET NOT NULL;
+          ALTER TABLE modules ALTER COLUMN width SET DEFAULT 60;
+          RAISE NOTICE 'Added width column';
+        END IF;
+
+        -- Add height column if not exists
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_name = 'modules' AND column_name = 'height'
+        ) THEN
+          ALTER TABLE modules ADD COLUMN height FLOAT;
+          UPDATE modules SET height = size WHERE height IS NULL;
+          ALTER TABLE modules ALTER COLUMN height SET NOT NULL;
+          ALTER TABLE modules ALTER COLUMN height SET DEFAULT 60;
+          RAISE NOTICE 'Added height column';
+        END IF;
+      END $$;
+    `;
+
+    console.log('⚠️ Note: Automatic migration may not work. Please run SQL manually in Supabase dashboard.');
+    console.log('📋 SQL to run:\n', migrationSQL);
+
+    res.json({ 
+      success: false,
+      message: 'Please run migration manually in Supabase SQL Editor',
+      sql: migrationSQL
+    });
+  } catch (error) {
+    console.error('❌ Migration error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message,
+      hint: 'Run the migration SQL manually in Supabase Dashboard > SQL Editor'
+    });
+  }
+});
+
+// Check if migration is needed
+app.get('/api/check-migration', async (req, res) => {
+  try {
+    // Try to query a module with width/height
+    const { data, error } = await supabase
+      .from('modules')
+      .select('width, height')
+      .limit(1);
+
+    if (error) {
+      // If error contains "column does not exist", migration is needed
+      if (error.message.includes('column') && (error.message.includes('width') || error.message.includes('height'))) {
+        return res.json({ 
+          migrationNeeded: true,
+          error: error.message,
+          sql: `
+-- Run this in Supabase SQL Editor:
+ALTER TABLE modules ADD COLUMN IF NOT EXISTS width FLOAT;
+ALTER TABLE modules ADD COLUMN IF NOT EXISTS height FLOAT;
+UPDATE modules SET width = size, height = size WHERE width IS NULL OR height IS NULL;
+ALTER TABLE modules ALTER COLUMN width SET NOT NULL, ALTER COLUMN height SET NOT NULL;
+ALTER TABLE modules ALTER COLUMN width SET DEFAULT 60, ALTER COLUMN height SET DEFAULT 60;
+          `
+        });
+      }
+      throw error;
+    }
+
+    res.json({ migrationNeeded: false, message: 'Migration already applied ✅' });
+  } catch (error) {
+    console.error('Error checking migration:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get user profile
 app.get('/api/users/:userId', async (req, res) => {
   try {
