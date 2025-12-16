@@ -325,27 +325,20 @@ export function DraftModuleEditor({
         cursor="ns-resize"
       />
 
-      {/* Control panel */}
+      {/* Confirm button - single green checkmark */}
       <foreignObject
-        x={displayX - 100}
+        x={displayX - 30}
         y={displayY + halfHeight + 20}
-        width="200"
+        width="60"
         height="60"
       >
-        <div className="flex gap-2 justify-center">
+        <div className="flex justify-center">
           <button
             onClick={onConfirm}
-            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg flex items-center gap-2 shadow-lg transition-colors"
+            className="w-12 h-12 bg-green-600 hover:bg-green-700 text-white rounded-full flex items-center justify-center shadow-2xl transition-all hover:scale-110"
+            title="Confirmar (Enter) | Click derecho para cancelar"
           >
-            <Check size={16} />
-            Confirmar
-          </button>
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center gap-2 shadow-lg transition-colors"
-          >
-            <X size={16} />
-            Cancelar
+            <Check size={24} />
           </button>
         </div>
       </foreignObject>

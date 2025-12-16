@@ -156,6 +156,16 @@ export function WorldCanvas({
     }
   };
 
+  const handleContextMenu = (e: React.MouseEvent<SVGSVGElement>) => {
+    e.preventDefault(); // Prevent default context menu
+    
+    // Right click cancels draft module
+    if (draftModule) {
+      onCancelModule();
+      console.log('❌ Draft cancelled (right click)');
+    }
+  };
+
   const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
     e.preventDefault();
     
@@ -413,6 +423,7 @@ export function WorldCanvas({
         viewBox={`${viewBoxOffset.x} ${viewBoxOffset.y} ${WORLD_WIDTH / zoom} ${WORLD_HEIGHT / zoom}`} 
         preserveAspectRatio="xMidYMid meet"
         onClick={handleCanvasClick}
+        onContextMenu={handleContextMenu}
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}

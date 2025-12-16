@@ -199,8 +199,8 @@ export default function App() {
         console.log('📋 Module copied to clipboard');
       }
 
-      // Ctrl/Cmd + V: Paste module from clipboard
-      if ((e.ctrlKey || e.metaKey) && e.key === 'v' && copiedModule && !draftModule) {
+      // Ctrl/Cmd + V: Paste module from clipboard (replaces existing draft)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v' && copiedModule) {
         e.preventDefault();
         const pastedModule: Module = {
           ...copiedModule,
@@ -209,7 +209,7 @@ export default function App() {
           y: copiedModule.y + 50,
           isDraft: true,
         };
-        setDraftModule(pastedModule);
+        setDraftModule(pastedModule); // Replaces existing draft if any
         console.log('📌 Module pasted, adjust position and confirm');
       }
 
@@ -566,11 +566,11 @@ export default function App() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-300">Confirmar módulo</span>
-                <kbd className="px-2 py-1 bg-slate-700 rounded text-slate-200">Enter</kbd>
+                <kbd className="px-2 py-1 bg-slate-700 rounded text-slate-200">Enter / ✓ verde</kbd>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-300">Cancelar / Deseleccionar</span>
-                <kbd className="px-2 py-1 bg-slate-700 rounded text-slate-200">Esc</kbd>
+                <span className="text-slate-300">Cancelar módulo draft</span>
+                <kbd className="px-2 py-1 bg-slate-700 rounded text-slate-200">Click derecho / Esc</kbd>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-300">Cambiar modo</span>
