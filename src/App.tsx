@@ -5,8 +5,11 @@ import { ChatPanel } from './components/ChatPanel';
 import { AvatarCustomizer } from './components/AvatarCustomizer';
 import { NavigationPanel } from './components/NavigationPanel';
 import { Toolbar } from './components/Toolbar';
-import { Hammer, Users, Wifi, WifiOff } from 'lucide-react';
+import { AuthDialog } from './components/AuthDialog';
+import { Hammer, Users, Wifi, WifiOff, LogIn, LogOut } from 'lucide-react';
 import { useMultiplayer } from './hooks/useMultiplayer';
+import { useAuth } from './contexts/AuthContext';
+import { Button } from './components/ui/button';
 
 export type Mode = 'explore' | 'build';
 export type Shape = 'square' | 'circle' | 'triangle';
@@ -51,23 +54,38 @@ export interface RoomCoords {
 }
 
 export default function App() {
+  const { profile, isGuest, loading, signOut } = useAuth();
   const [mode, setMode] = useState<Mode>('explore');
   const [showAvatarCustomizer, setShowAvatarCustomizer] = useState(false);
   const [showNavigation, setShowNavigation] = useState(false);
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
   
   // World coordinates
   const [currentCoords, setCurrentCoords] = useState<RoomCoords>({ x: 0, y: 0 });
   
-  // Player avatar
+  // Player avatar (initialized from profile)
   const [playerAvatar, setPlayerAvatar] = useState<Avatar>({
-    id: 'player',
-    name: 'Tú',
+    id: profile?.id || 'player',
+    name: profile?.username || 'Tú',
     x: 400,
     y: 300,
-    color: '#3b82f6',
-    headShape: 'circle',
+    color: profile?.avatar_color || '#3b82f6',
+    headShape: (profile?.avatar_shape as Shape) || 'circle',
     isPlayer: true,
   });
+
+  // Update player avatar when profile changes
+  useEffect(() => {
+    if (profile) {
+      setPlayerAvatar(prev => ({
+        ...prev,
+        id: profile.id,
+        name: profile.username,
+        color: profile.avatar_color,
+        headShape: profile.avatar_shape as Shape,
+      }));
+    }
+  }, [profile]);
 
   // Other avatars in the room
   const [otherAvatars, setOtherAvatars] = useState<Avatar[]>([
@@ -89,27 +107,8 @@ export default function App() {
     },
   ]);
 
-  // Modules placed in the world (stored per room coords)
-  const [modules, setModules] = useState<Module[]>([
-    {
-      id: '1',
-      x: 200,
-      y: 200,
-      shape: 'square',
-      size: 50,
-      color: '#8b5cf6',
-      behavior: 'button',
-    },
-    {
-      id: '2',
-      x: 600,
-      y: 300,
-      shape: 'circle',
-      size: 40,
-      color: '#f59e0b',
-      behavior: 'teleport',
-    },
-  ]);
+  // Modules placed in the world (loaded from database)
+  const [modules, setModules] = useState<Module[]>([]);
 
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -126,6 +125,7 @@ export default function App() {
   } = useMultiplayer({
     playerAvatar,
     currentCoords,
+    userId: profile?.id || 'guest',
     onPlayersUpdate: setOtherAvatars,
     onModulesUpdate: setModules,
     onChatMessage: (message) => {
@@ -133,7 +133,7 @@ export default function App() {
     },
   });
 
-  // Initialize with fixed positions for multiplayer consistency
+  // Initialize player position
   useEffect(() => {
     // Fixed world dimensions: 800x600
     const centerX = 400;
@@ -141,48 +141,6 @@ export default function App() {
     
     // Center player avatar
     setPlayerAvatar(prev => ({ ...prev, x: centerX, y: centerY }));
-    
-    // Position other avatars at fixed coordinates
-    setOtherAvatars([
-      {
-        id: 'user1',
-        name: 'Player1',
-        x: 300,
-        y: 200,
-        color: '#ef4444',
-        headShape: 'square',
-      },
-      {
-        id: 'user2',
-        name: 'Builder99',
-        x: 500,
-        y: 400,
-        color: '#10b981',
-        headShape: 'triangle',
-      },
-    ]);
-    
-    // Position modules at fixed coordinates
-    setModules([
-      {
-        id: '1',
-        x: 200,
-        y: 200,
-        shape: 'square',
-        size: 50,
-        color: '#8b5cf6',
-        behavior: 'button',
-      },
-      {
-        id: '2',
-        x: 600,
-        y: 300,
-        shape: 'circle',
-        size: 40,
-        color: '#f59e0b',
-        behavior: 'teleport',
-      },
-    ]);
   }, []);
 
   // Clear chat bubbles after 5 seconds
@@ -476,6 +434,38 @@ export default function App() {
           onClose={() => setShowNavigation(false)}
         />
       )}
+
+      {/* Auth Dialog */}
+      <AuthDialog open={showAuthDialog} onOpenChange={setShowAuthDialog} />
+
+      {/* Auth Button - Top Right */}
+      <div className="absolute top-4 right-4 z-10">
+        {isGuest ? (
+          <Button
+            onClick={() => setShowAuthDialog(true)}
+            variant="outline"
+            className="bg-slate-800/90 backdrop-blur-sm border-slate-600 text-white hover:bg-slate-700"
+          >
+            <LogIn size={16} className="mr-2" />
+            Iniciar Sesión
+          </Button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <div className="bg-slate-800/90 backdrop-blur-sm border border-slate-600 px-3 py-2 rounded-lg text-white text-sm">
+              <Users size={14} className="inline mr-1" />
+              {profile?.username}
+            </div>
+            <Button
+              onClick={signOut}
+              variant="outline"
+              size="sm"
+              className="bg-slate-800/90 backdrop-blur-sm border-slate-600 text-white hover:bg-slate-700"
+            >
+              <LogOut size={14} />
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

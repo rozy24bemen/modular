@@ -1,16 +1,54 @@
-# Modular - Servidor Multijugador
+# Modular - Servidor Multijugador con Supabase
 
-Servidor de multijugador para el mundo virtual modular usando Socket.io.
+Servidor de multijugador para el mundo virtual modular usando Socket.io y Supabase para persistencia.
 
 ## Instalación Local
 
+### 1. Instalar Dependencias
 ```bash
 cd server
 npm install
+```
+
+### 2. Configurar Variables de Entorno
+
+Crea `server/.env`:
+```env
+SUPABASE_URL=https://tu-proyecto.supabase.co
+SUPABASE_ANON_KEY=tu-anon-key
+SUPABASE_SERVICE_KEY=tu-service-role-key
+PORT=3001
+NODE_ENV=development
+```
+
+### 3. Reemplazar Servidor Antiguo
+
+```bash
+mv index.js index-old.js
+mv index-new.js index.js
+```
+
+### 4. Iniciar Servidor
+
+```bash
 npm start
 ```
 
 El servidor se ejecutará en `http://localhost:3001`
+
+Deberías ver:
+```
+## Variables de Entorno
+
+| Variable | Descripción | Requerido |
+|----------|-------------|-----------|
+| `SUPABASE_URL` | URL de tu proyecto Supabase | ✅ Sí |
+| `SUPABASE_ANON_KEY` | Anon/public key de Supabase | ✅ Sí |
+| `SUPABASE_SERVICE_KEY` | Service role key (admin) | ✅ Sí |
+| `PORT` | Puerto del servidor | No (default: 3001) |
+| `NODE_ENV` | Entorno (development/production) | No |
+
+⚠️ **IMPORTANTE:** El `service_role_key` tiene permisos completos sobre la base de datos. NUNCA lo expongas en el frontend o en repositorios públicos.
 
 ## Desplegar en Railway
 

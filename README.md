@@ -1,22 +1,51 @@
 
 # Modular - Mundo Virtual Multijugador 🌍
 
-Un mundo virtual interactivo y modular con multijugador en tiempo real, construido con React, TypeScript, Vite y Socket.io.
+Un mundo virtual interactivo y modular con multijugador en tiempo real, persistencia de datos y autenticación de usuarios. Construido con React, TypeScript, Vite, Socket.io y Supabase.
 
 ## ✨ Características
 
 - 🎮 **Multijugador en tiempo real** - Ve a otros jugadores moverse y chatear instantáneamente
+- 🗄️ **Persistencia completa** - Base de datos Supabase para guardar mundos, módulos y progreso
+- 👤 **Sistema de autenticación** - Registro, login y modo invitado
 - 🗺️ **Mundo infinito** - Navega entre habitaciones con coordenadas ilimitadas
-- 💬 **Chat en vivo** - Comunícate con otros jugadores con burbujas de chat
+- 💬 **Chat persistente** - Comunícate con otros jugadores, el historial se guarda
 - 🎨 **Personalización de avatares** - Formas (círculo, cuadrado, triángulo) y colores personalizables
-- 🔨 **Modo construcción** - Crea y edita módulos interactivos en tiempo real
+- 🔨 **Modo construcción** - Crea y edita módulos interactivos que persisten
 - 🚶 **Movimiento fluido** - Control con WASD o click-to-move
 - 📱 **Responsive** - Se adapta a cualquier tamaño de pantalla
 - 🎯 **Límites visuales claros** - Bordes y flechas que indican transiciones de habitación
 
 ## 🚀 Inicio Rápido
 
-### Frontend
+### ⚠️ Configuración Requerida
+
+Este proyecto requiere una base de datos Supabase. **Lee primero:** [SETUP_SUPABASE.md](SETUP_SUPABASE.md)
+
+### 1. Configurar Base de Datos
+
+1. Crea un proyecto en [Supabase](https://supabase.com)
+2. Ejecuta el schema SQL: `supabase/schema.sql`
+3. Copia las credenciales (URL y keys)
+
+### 2. Variables de Entorno
+
+**Raíz del proyecto (`.env`):**
+```env
+VITE_SERVER_URL=http://localhost:3001
+VITE_SUPABASE_URL=tu-url
+VITE_SUPABASE_ANON_KEY=tu-anon-key
+```
+
+**Servidor (`server/.env`):**
+```env
+SUPABASE_URL=tu-url
+SUPABASE_ANON_KEY=tu-anon-key
+SUPABASE_SERVICE_KEY=tu-service-key
+PORT=3001
+```
+
+### 3. Frontend
 
 ```bash
 # Instalar dependencias
@@ -28,20 +57,43 @@ npm run dev
 
 El cliente se ejecutará en `http://localhost:3000`
 
-### Backend (Servidor Multijugador)
+### 4. Backend (Servidor Multijugador)
 
-```bash
-# Navegar al directorio del servidor
-cd server
+## 📁 Estructura del Proyecto
 
-# Instalar dependencias
-npm install
-
-# Iniciar servidor
-npm start
 ```
+modular/
+├── src/
+│   ├── components/        # Componentes React
+│   │   ├── WorldCanvas.tsx       # Canvas principal del mundo
+│   │   ├── ChatPanel.tsx         # Panel de chat
+│   │   ├── ModuleEditor.tsx      # Editor de módulos
+│   │   ├── AvatarCustomizer.tsx  # Personalizador de avatar
+│   │   ├── AuthDialog.tsx        # ✨ Login/Registro
+│   │   └── ui/                   # Componentes de UI
+│   ├── contexts/
+│   │   └── AuthContext.tsx       # ✨ Context de autenticación
+│   ├── lib/
+│   │   └── supabase.ts           # ✨ Cliente Supabase
+│   ├── hooks/
+│   │   └── useMultiplayer.ts     # Hook de multijugador
+│   └── App.tsx            # Componente principal
+├── server/
+│   ├── config/
+│   │   └── supabase.js           # ✨ Config Supabase servidor
+│   ├── index.js           # ✨ Servidor Socket.io + Supabase
+│   └── package.json       # Dependencias del servidor
+├── supabase/
+│   └── schema.sql         # ✨ Schema de base de datos
+├── SETUP_SUPABASE.md      # ✨ Guía de configuración
+├── IMPLEMENTACION.md      # ✨ Detalles de implementación
+└── package.json           # Dependencias del frontend
 
-El servidor se ejecutará en `http://localhost:3001`
+✨ = Nuevo/actualizado con Supabase
+```
+Abre `http://localhost:3000` y:
+- Juega como invitado (sin guardar progreso)
+- O regístrate para guardar tu progreso
 
 ## 🎮 Cómo Jugar
 
@@ -80,24 +132,44 @@ modular/
 ## 🌐 Despliegue
 
 ### Frontend (Vercel)
-
-El frontend ya está configurado para Vercel. Solo conecta tu repositorio de GitHub en [vercel.com](https://vercel.com)
-
-### Backend (Railway/Render)
-
-Ver [server/README.md](server/README.md) para instrucciones detalladas de despliegue del servidor.
-
-Después de desplegar, actualiza el archivo `.env`:
-
-```env
-VITE_SERVER_URL=https://tu-servidor.railway.app
-```
-
 ## 🛠️ Tecnologías
 
 ### Frontend
 - **React 18** - Framework UI
 - **TypeScript** - Type safety
+- **Vite** - Build tool y dev server
+- **Socket.io Client** - WebSocket client
+- **Supabase** - Base de datos y autenticación ✨
+- **Framer Motion** - Animaciones
+- **Radix UI** - Componentes accesibles
+- **Tailwind CSS** - Estilos
+
+### Backend
+- **Node.js** - Runtime
+- **Express** - Web server
+- **Socket.io** - WebSocket server en tiempo real
+- **Supabase** - PostgreSQL database ✨
+## 📝 Variables de Entorno
+
+**Frontend (`.env` en raíz):**
+```env
+VITE_SERVER_URL=http://localhost:3001
+VITE_SUPABASE_URL=https://tu-proyecto.supabase.co
+VITE_SUPABASE_ANON_KEY=tu-anon-key
+```
+
+**Backend (`server/.env`):**
+```env
+SUPABASE_URL=https://tu-proyecto.supabase.co
+SUPABASE_ANON_KEY=tu-anon-key
+SUPABASE_SERVICE_KEY=tu-service-role-key
+PORT=3001
+NODE_ENV=development
+```
+
+Ver `.env.example` y `server/.env.example` para plantillas completas.
+
+⚠️ **IMPORTANTE**: Nunca subas archivos `.env` a Git. El `service_role_key` solo debe estar en el servidor.
 - **Vite** - Build tool y dev server
 - **Socket.io Client** - WebSocket client
 - **Framer Motion** - Animaciones

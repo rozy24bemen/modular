@@ -30,5 +30,13 @@ dist-ssr
 .env.test.local
 .env.production.local
 
+# Server environment variables
+server/.env
+server/.env.local
+server/.env.production
+
+# Supabase
+.supabase
+
 # Vercel
 .vercel

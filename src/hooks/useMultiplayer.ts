@@ -8,6 +8,7 @@ const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
 interface UseMultiplayerProps {
   playerAvatar: Avatar;
   currentCoords: RoomCoords;
+  userId: string;
   onPlayersUpdate: (players: Avatar[]) => void;
   onModulesUpdate: (updater: Module[] | ((prev: Module[]) => Module[])) => void;
   onChatMessage: (message: ChatMessage) => void;
@@ -16,6 +17,7 @@ interface UseMultiplayerProps {
 export function useMultiplayer({
   playerAvatar,
   currentCoords,
+  userId,
   onPlayersUpdate,
   onModulesUpdate,
   onChatMessage,
@@ -40,6 +42,7 @@ export function useMultiplayer({
       socket.emit('join-room', {
         coords: currentCoords,
         avatar: playerAvatar,
+        userId: userId,
       });
     });
 
@@ -137,11 +140,12 @@ export function useMultiplayer({
   }, []);
 
   // Update room when coordinates change
-  useEffect(() => {
     if (socketRef.current?.connected) {
       socketRef.current.emit('join-room', {
         coords: currentCoords,
         avatar: playerAvatar,
+        userId: userId,
+      });vatar: playerAvatar,
       });
       
       // Clear other players when changing rooms
