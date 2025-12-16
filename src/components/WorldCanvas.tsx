@@ -39,6 +39,8 @@ export function WorldCanvas({
   const [keys, setKeys] = useState<Set<string>>(new Set());
   const [hoveredAvatar, setHoveredAvatar] = useState<string | null>(null);
   const [targetPosition, setTargetPosition] = useState<{ x: number; y: number } | null>(null);
+  const [zoom, setZoom] = useState(1); // Zoom level: 1 = normal, 2 = 2x zoom in, 0.5 = 2x zoom out
+  const [viewBoxOffset, setViewBoxOffset] = useState({ x: 0, y: 0 }); // Offset for panning
   
   // Fixed world dimensions for consistent multiplayer experience
   const WORLD_WIDTH = 800;
@@ -150,6 +152,38 @@ export function WorldCanvas({
       // Explore mode - click to move to position
       setTargetPosition({ x, y });
     }
+  };
+
+  const handleWheel = (e: React.WheelEvent<SVGSVGElement>) => {
+    e.preventDefault();
+    
+    const svg = svgRef.current;
+    if (!svg) return;
+
+    // Get mouse position in SVG coordinates before zoom
+    const beforeZoom = clientToSVGCoords(e.clientX, e.clientY);
+    if (!beforeZoom) return;
+
+    // Calculate new zoom level (deltaY < 0 = zoom in, > 0 = zoom out)
+    const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+    const newZoom = Math.max(0.5, Math.min(3, zoom * zoomFactor)); // Clamp between 0.5x and 3x
+    
+    if (newZoom === zoom) return; // Already at limit
+
+    // Calculate viewBox dimensions based on zoom
+    const newWidth = WORLD_WIDTH / newZoom;
+    const newHeight = WORLD_HEIGHT / newZoom;
+
+    // Adjust offset to keep mouse position constant
+    // Calculate where the mouse should be after zoom
+    const mouseXRatio = beforeZoom.x / WORLD_WIDTH;
+    const mouseYRatio = beforeZoom.y / WORLD_HEIGHT;
+    
+    const newOffsetX = beforeZoom.x - (newWidth * mouseXRatio);
+    const newOffsetY = beforeZoom.y - (newHeight * mouseYRatio);
+
+    setZoom(newZoom);
+    setViewBoxOffset({ x: newOffsetX, y: newOffsetY });
   };
 
   const renderModule = (module: Module) => {
@@ -340,9 +374,10 @@ export function WorldCanvas({
       <svg 
         ref={svgRef}
         className="w-full h-full" 
-        viewBox={`0 0 ${WORLD_WIDTH} ${WORLD_HEIGHT}`} 
+        viewBox={`${viewBoxOffset.x} ${viewBoxOffset.y} ${WORLD_WIDTH / zoom} ${WORLD_HEIGHT / zoom}`} 
         preserveAspectRatio="xMidYMid meet"
         onClick={handleCanvasClick}
+        onWheel={handleWheel}
       >
         {/* Room boundaries with visible borders */}
         <rect
@@ -401,6 +436,22 @@ export function WorldCanvas({
           {renderAvatar({ ...playerAvatar, x: 0, y: 0 })}
         </motion.g>
       </svg>
+
+      {/* Zoom indicator */}
+      <div className="absolute top-4 right-4 bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-lg px-3 py-2 flex items-center gap-2">
+        <p className="text-slate-300 text-sm flex items-center gap-2">
+          🔍 Zoom: <span className="font-mono font-bold">{(zoom * 100).toFixed(0)}%</span>
+        </p>
+        {zoom !== 1 && (
+          <button
+            onClick={() => { setZoom(1); setViewBoxOffset({ x: 0, y: 0 }); }}
+            className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-2 py-0.5 rounded transition-colors"
+            title="Reset zoom"
+          >
+            Reset
+          </button>
+        )}
+      </div>
 
       {/* Mode indicator */}
       <div className="absolute top-4 left-4 bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-lg px-3 py-2">
