@@ -60,14 +60,20 @@ export function DraftModuleEditor({
       setIsDragging(true);
       const svgCoords = clientToSVGCoords(e.clientX, e.clientY, svg);
       if (svgCoords) {
+        // Use current visual position (tempPosition if exists, otherwise draftModule)
+        const currentX = tempPosition?.x ?? draftModule.x;
+        const currentY = tempPosition?.y ?? draftModule.y;
         setDragStart({
-          x: svgCoords.x - draftModule.x,  // Store offset from center
-          y: svgCoords.y - draftModule.y,
+          x: svgCoords.x - currentX,  // Store offset from current visual center
+          y: svgCoords.y - currentY,
         });
       }
     }
     
-    setInitialModule(draftModule);
+    // Store initial module with current visual position
+    const currentX = tempPosition?.x ?? draftModule.x;
+    const currentY = tempPosition?.y ?? draftModule.y;
+    setInitialModule({ ...draftModule, x: currentX, y: currentY });
   };
 
   useEffect(() => {

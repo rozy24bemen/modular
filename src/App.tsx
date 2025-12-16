@@ -263,6 +263,7 @@ export default function App() {
   const handleModeToggle = () => {
     setMode(mode === 'explore' ? 'build' : 'explore');
     setSelectedModule(null);
+    setDraftModule(null); // Clear draft when switching modes
   };
 
   const handleAddModule = (x: number, y: number) => {
