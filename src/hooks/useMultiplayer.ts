@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import type { Avatar, Module, ChatMessage, RoomCoords } from '../App';
 
-// Change this to your deployed server URL
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
+// Use relative URL in production (same server), or env variable for separate backend
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || (import.meta.env.PROD ? window.location.origin : 'http://localhost:3001');
 
 interface UseMultiplayerProps {
   playerAvatar: Avatar;
