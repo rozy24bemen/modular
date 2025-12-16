@@ -54,12 +54,15 @@ export function useMultiplayer({
     // Room state when joining
     socket.on('room-state', (data: { players: Avatar[], modules: Module[] }) => {
       console.log('📦 Received room state:', data);
+      console.log('👥 Players in room-state:', data.players.map(p => ({ id: p.id, name: p.name })));
       
       // Update other players
       otherPlayersRef.current.clear();
       data.players.forEach(player => {
+        console.log('➕ Adding player to map:', player.id, player.name);
         otherPlayersRef.current.set(player.id, player);
       });
+      console.log('🗺️ Total players in map:', otherPlayersRef.current.size);
       onPlayersUpdate(Array.from(otherPlayersRef.current.values()));
       
       // Update modules
@@ -68,8 +71,9 @@ export function useMultiplayer({
 
     // New player joined
     socket.on('player-joined', (player: Avatar) => {
-      console.log('👋 Player joined:', player.name);
+      console.log('👋 Player joined:', player.name, 'ID:', player.id);
       otherPlayersRef.current.set(player.id, player);
+      console.log('🗺️ Total players in map after join:', otherPlayersRef.current.size);
       onPlayersUpdate(Array.from(otherPlayersRef.current.values()));
     });
 
