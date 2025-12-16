@@ -82,12 +82,16 @@ export function useMultiplayer({
 
     // Player moved
     socket.on('player-moved', (data: { playerId: string, x: number, y: number }) => {
+      console.log('🚶 Player moved event:', data);
       const player = otherPlayersRef.current.get(data.playerId);
       if (player) {
         player.x = data.x;
         player.y = data.y;
         otherPlayersRef.current.set(data.playerId, player);
         onPlayersUpdate(Array.from(otherPlayersRef.current.values()));
+        console.log('✅ Updated player position');
+      } else {
+        console.warn('⚠️ Player not found:', data.playerId);
       }
     });
 
@@ -156,7 +160,12 @@ export function useMultiplayer({
 
   // Emit player movement
   const emitMove = (x: number, y: number) => {
-    socketRef.current?.emit('player-move', { x, y });
+    if (socketRef.current?.connected) {
+      console.log('📍 Emitting move:', { x, y });
+      socketRef.current.emit('player-move', { x, y });
+    } else {
+      console.warn('⚠️ Cannot emit move - socket not connected');
+    }
   };
 
   // Emit chat message
