@@ -106,12 +106,14 @@ async function loadRoomModules(roomId) {
 
 async function saveModule(roomId, module, creatorId = null) {
   try {
-    console.log('💾 Saving module to database:', { 
+    console.log('💾 ENTERING saveModule:', { 
       id: module.id, 
+      idType: typeof module.id,
       roomId, 
       creatorId,
       width: module.width,
-      height: module.height 
+      height: module.height,
+      fullModule: JSON.stringify(module)
     });
     
     const { data, error } = await supabase
@@ -133,11 +135,27 @@ async function saveModule(roomId, module, creatorId = null) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Supabase error:', { 
+        message: error.message, 
+        details: error.details, 
+        hint: error.hint,
+        code: error.code,
+        fullError: JSON.stringify(error)
+      });
+      throw error;
+    }
+    
     console.log('✅ Module saved successfully:', data.id);
     return data;
   } catch (error) {
-    console.error('❌ Error saving module:', error.message, error.details);
+    console.error('❌ CATCH block - Error saving module:', {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code,
+      stack: error.stack
+    });
     return null;
   }
 }
@@ -351,24 +369,35 @@ io.on('connection', (socket) => {
 
   // Module created
   socket.on('module-create', async (module) => {
-    console.log('🆕 Received module-create event:', { moduleId: module.id, room: currentRoomKey });
+    console.log('🆕 RECEIVED module-create:', { 
+      moduleId: module.id,
+      idType: typeof module.id,
+      currentRoomId, 
+      currentRoomKey,
+      width: module.width,
+      height: module.height 
+    });
     
     if (!currentRoomKey || !currentRoomId) {
-      console.error('❌ No room context for module creation');
+      console.error('❌ No room context', { currentRoomKey, currentRoomId });
       return;
     }
     
     // Save to database
+    console.log('📝 Calling saveModule...');
     const saved = await saveModule(currentRoomId, module, userId);
+    console.log('💾 saveModule result:', saved ? 'SUCCESS' : 'FAILED');
+    
     if (!saved) {
-      console.error('❌ Failed to save module to database');
+      console.error('❌ Save failed');
       socket.emit('error', { message: 'Failed to create module' });
       return;
     }
     
-    console.log('📡 Broadcasting module-created to room:', currentRoomKey);
+    console.log('📡 Broadcasting to room:', currentRoomKey);
     // Broadcast to others in room
     socket.to(currentRoomKey).emit('module-created', module);
+    console.log('✅ Broadcast sent');
   });
 
   // Module updated

@@ -26,6 +26,8 @@ export function DraftModuleEditor({
   const [resizeHandle, setResizeHandle] = useState<ResizeHandle>(null);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [initialModule, setInitialModule] = useState(draftModule);
+  // Local state for smooth dragging without parent re-render lag
+  const [tempPosition, setTempPosition] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
   const handleMouseDown = (e: React.MouseEvent, handle: ResizeHandle = null) => {
     e.stopPropagation();
@@ -79,10 +81,12 @@ export function DraftModuleEditor({
         const clampedX = Math.max(draftModule.width / 2, Math.min(canvasWidth - draftModule.width / 2, newX));
         const clampedY = Math.max(draftModule.height / 2, Math.min(canvasHeight - draftModule.height / 2, newY));
 
-        onUpdate({
-          ...draftModule,
+        // Update local state immediately for smooth visual feedback
+        setTempPosition({
           x: clampedX,
           y: clampedY,
+          width: draftModule.width,
+          height: draftModule.height,
         });
       } else if (isResizing && resizeHandle) {
         const dx = e.clientX - dragStart.x;
@@ -125,17 +129,29 @@ export function DraftModuleEditor({
         }
 
         // Center stays at initialModule.x, initialModule.y
-        onUpdate({
-          ...draftModule,
+        // Update local state immediately for smooth visual feedback
+        setTempPosition({
+          x: initialModule.x,
+          y: initialModule.y,
           width: newWidth,
           height: newHeight,
-          x: initialModule.x,  // Keep center fixed
-          y: initialModule.y,  // Keep center fixed
         });
       }
     };
 
     const handleMouseUp = () => {
+      // On mouse up, commit changes to parent
+      if (tempPosition) {
+        onUpdate({
+          ...draftModule,
+          x: tempPosition.x,
+          y: tempPosition.y,
+          width: tempPosition.width,
+          height: tempPosition.height,
+        });
+        setTempPosition(null);
+      }
+      
       setIsDragging(false);
       setIsResizing(false);
       setResizeHandle(null);
@@ -148,11 +164,18 @@ export function DraftModuleEditor({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, isResizing, resizeHandle, dragStart, initialModule, draftModule, onUpdate, canvasWidth, canvasHeight]);
+  }, [isDragging, isResizing, resizeHandle, dragStart, initialModule, draftModule, onUpdate, canvasWidth, canvasHeight, tempPosition]);
 
   const handleSize = 8;
-  const halfWidth = draftModule.width / 2;
-  const halfHeight = draftModule.height / 2;
+  
+  // Use tempPosition for smooth dragging, fallback to draftModule
+  const displayX = tempPosition?.x ?? draftModule.x;
+  const displayY = tempPosition?.y ?? draftModule.y;
+  const displayWidth = tempPosition?.width ?? draftModule.width;
+  const displayHeight = tempPosition?.height ?? draftModule.height;
+  
+  const halfWidth = displayWidth / 2;
+  const halfHeight = displayHeight / 2;
 
   return (
     <g>
@@ -160,10 +183,10 @@ export function DraftModuleEditor({
       <g opacity={0.8}>
         {draftModule.shape === 'square' && (
           <rect
-            x={draftModule.x - halfWidth}
-            y={draftModule.y - halfHeight}
-            width={draftModule.width}
-            height={draftModule.height}
+            x={displayX - halfWidth}
+            y={displayY - halfHeight}
+            width={displayWidth}
+            height={displayHeight}
             fill={draftModule.color}
             stroke="#fff"
             strokeWidth="2"
@@ -172,8 +195,8 @@ export function DraftModuleEditor({
         )}
         {draftModule.shape === 'circle' && (
           <ellipse
-            cx={draftModule.x}
-            cy={draftModule.y}
+            cx={displayX}
+            cy={displayY}
             rx={halfWidth}
             ry={halfHeight}
             fill={draftModule.color}
@@ -184,9 +207,9 @@ export function DraftModuleEditor({
         )}
         {draftModule.shape === 'triangle' && (
           <path
-            d={`M ${draftModule.x},${draftModule.y - halfHeight} 
-                L ${draftModule.x + halfWidth},${draftModule.y + halfHeight} 
-                L ${draftModule.x - halfWidth},${draftModule.y + halfHeight} Z`}
+            d={`M ${displayX},${displayY - halfHeight} 
+                L ${displayX + halfWidth},${displayY + halfHeight} 
+                L ${displayX - halfWidth},${displayY + halfHeight} Z`}
             fill={draftModule.color}
             stroke="#fff"
             strokeWidth="2"
@@ -201,42 +224,42 @@ export function DraftModuleEditor({
         style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
       >
         <circle
-          cx={draftModule.x}
-          cy={draftModule.y}
+          cx={displayX}
+          cy={displayY}
           r="12"
           fill="rgba(59, 130, 246, 0.9)"
           stroke="#fff"
           strokeWidth="2"
         />
-        <Move size={14} x={draftModule.x - 7} y={draftModule.y - 7} color="#fff" />
+        <Move size={14} x={displayX - 7} y={displayY - 7} color="#fff" />
       </g>
 
       {/* Resize handles */}
       {/* Corners */}
       <ResizeHandleComponent
-        x={draftModule.x - halfWidth - handleSize}
-        y={draftModule.y - halfHeight - handleSize}
+        x={displayX - halfWidth - handleSize}
+        y={displayY - halfHeight - handleSize}
         size={handleSize}
         onMouseDown={(e) => handleMouseDown(e, 'tl')}
         cursor="nw-resize"
       />
       <ResizeHandleComponent
-        x={draftModule.x + halfWidth}
-        y={draftModule.y - halfHeight - handleSize}
+        x={displayX + halfWidth}
+        y={displayY - halfHeight - handleSize}
         size={handleSize}
         onMouseDown={(e) => handleMouseDown(e, 'tr')}
         cursor="ne-resize"
       />
       <ResizeHandleComponent
-        x={draftModule.x - halfWidth - handleSize}
-        y={draftModule.y + halfHeight}
+        x={displayX - halfWidth - handleSize}
+        y={displayY + halfHeight}
         size={handleSize}
         onMouseDown={(e) => handleMouseDown(e, 'bl')}
         cursor="sw-resize"
       />
       <ResizeHandleComponent
-        x={draftModule.x + halfWidth}
-        y={draftModule.y + halfHeight}
+        x={displayX + halfWidth}
+        y={displayY + halfHeight}
         size={handleSize}
         onMouseDown={(e) => handleMouseDown(e, 'br')}
         cursor="se-resize"
@@ -244,29 +267,29 @@ export function DraftModuleEditor({
 
       {/* Edges */}
       <ResizeHandleComponent
-        x={draftModule.x + halfWidth}
-        y={draftModule.y - handleSize / 2}
+        x={displayX + halfWidth}
+        y={displayY - handleSize / 2}
         size={handleSize}
         onMouseDown={(e) => handleMouseDown(e, 'r')}
         cursor="ew-resize"
       />
       <ResizeHandleComponent
-        x={draftModule.x - halfWidth - handleSize}
-        y={draftModule.y - handleSize / 2}
+        x={displayX - halfWidth - handleSize}
+        y={displayY - handleSize / 2}
         size={handleSize}
         onMouseDown={(e) => handleMouseDown(e, 'l')}
         cursor="ew-resize"
       />
       <ResizeHandleComponent
-        x={draftModule.x - handleSize / 2}
-        y={draftModule.y - halfHeight - handleSize}
+        x={displayX - handleSize / 2}
+        y={displayY - halfHeight - handleSize}
         size={handleSize}
         onMouseDown={(e) => handleMouseDown(e, 't')}
         cursor="ns-resize"
       />
       <ResizeHandleComponent
-        x={draftModule.x - handleSize / 2}
-        y={draftModule.y + halfHeight}
+        x={displayX - handleSize / 2}
+        y={displayY + halfHeight}
         size={handleSize}
         onMouseDown={(e) => handleMouseDown(e, 'b')}
         cursor="ns-resize"
@@ -274,8 +297,8 @@ export function DraftModuleEditor({
 
       {/* Control panel */}
       <foreignObject
-        x={draftModule.x - 100}
-        y={draftModule.y + halfHeight + 20}
+        x={displayX - 100}
+        y={displayY + halfHeight + 20}
         width="200"
         height="60"
       >
