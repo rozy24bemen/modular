@@ -106,6 +106,14 @@ async function loadRoomModules(roomId) {
 
 async function saveModule(roomId, module, creatorId = null) {
   try {
+    console.log('💾 Saving module to database:', { 
+      id: module.id, 
+      roomId, 
+      creatorId,
+      width: module.width,
+      height: module.height 
+    });
+    
     const { data, error } = await supabase
       .from('modules')
       .insert({
@@ -126,9 +134,10 @@ async function saveModule(roomId, module, creatorId = null) {
       .single();
 
     if (error) throw error;
+    console.log('✅ Module saved successfully:', data.id);
     return data;
   } catch (error) {
-    console.error('Error saving module:', error);
+    console.error('❌ Error saving module:', error.message, error.details);
     return null;
   }
 }
@@ -342,15 +351,22 @@ io.on('connection', (socket) => {
 
   // Module created
   socket.on('module-create', async (module) => {
-    if (!currentRoomKey || !currentRoomId) return;
+    console.log('🆕 Received module-create event:', { moduleId: module.id, room: currentRoomKey });
+    
+    if (!currentRoomKey || !currentRoomId) {
+      console.error('❌ No room context for module creation');
+      return;
+    }
     
     // Save to database
     const saved = await saveModule(currentRoomId, module, userId);
     if (!saved) {
+      console.error('❌ Failed to save module to database');
       socket.emit('error', { message: 'Failed to create module' });
       return;
     }
     
+    console.log('📡 Broadcasting module-created to room:', currentRoomKey);
     // Broadcast to others in room
     socket.to(currentRoomKey).emit('module-created', module);
   });

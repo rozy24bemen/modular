@@ -230,7 +230,12 @@ export default function App() {
   };
 
   const handleConfirmModule = () => {
-    if (!draftModule) return;
+    if (!draftModule) {
+      console.warn('⚠️ No draft module to confirm');
+      return;
+    }
+    
+    console.log('✅ Confirming module:', draftModule.id);
     
     // Remove draft flag and add to confirmed modules
     const confirmedModule = { ...draftModule, isDraft: false };
@@ -241,6 +246,7 @@ export default function App() {
     setSelectedModule(null);
     
     // Emit to multiplayer server for real-time sync
+    console.log('📡 Emitting module to server...');
     emitModuleCreate(confirmedModule);
   };
 

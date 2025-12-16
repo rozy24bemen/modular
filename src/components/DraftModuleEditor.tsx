@@ -30,19 +30,31 @@ export function DraftModuleEditor({
   const handleMouseDown = (e: React.MouseEvent, handle: ResizeHandle = null) => {
     e.stopPropagation();
     
+    // Get canvas bounding rect for proper coordinate conversion
+    const canvas = (e.target as SVGElement).ownerSVGElement;
+    const rect = canvas?.getBoundingClientRect();
+    
     if (handle) {
       // Resizing
       setIsResizing(true);
       setResizeHandle(handle);
+      setDragStart({
+        x: e.clientX,
+        y: e.clientY,
+      });
     } else {
-      // Dragging
+      // Dragging - calculate offset from module center
       setIsDragging(true);
+      if (rect) {
+        const canvasX = e.clientX - rect.left;
+        const canvasY = e.clientY - rect.top;
+        setDragStart({
+          x: canvasX - draftModule.x,  // Store offset from center
+          y: canvasY - draftModule.y,
+        });
+      }
     }
     
-    setDragStart({
-      x: e.clientX,
-      y: e.clientY,
-    });
     setInitialModule(draftModule);
   };
 
@@ -50,34 +62,48 @@ export function DraftModuleEditor({
     if (!isDragging && !isResizing) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      const dx = e.clientX - dragStart.x;
-      const dy = e.clientY - dragStart.y;
-
       if (isDragging) {
-        // Move module
+        // Get canvas coordinates
+        const canvas = document.querySelector('.world-canvas-container svg');
+        const rect = canvas?.getBoundingClientRect();
+        if (!rect) return;
+
+        const canvasX = e.clientX - rect.left;
+        const canvasY = e.clientY - rect.top;
+
+        // Apply the offset stored in dragStart (distance from center)
+        const newX = canvasX - dragStart.x;
+        const newY = canvasY - dragStart.y;
+
+        // Clamp to canvas bounds
+        const clampedX = Math.max(draftModule.width / 2, Math.min(canvasWidth - draftModule.width / 2, newX));
+        const clampedY = Math.max(draftModule.height / 2, Math.min(canvasHeight - draftModule.height / 2, newY));
+
         onUpdate({
           ...draftModule,
-          x: Math.max(draftModule.width / 2, Math.min(canvasWidth - draftModule.width / 2, initialModule.x + dx)),
-          y: Math.max(draftModule.height / 2, Math.min(canvasHeight - draftModule.height / 2, initialModule.y + dy)),
+          x: clampedX,
+          y: clampedY,
         });
       } else if (isResizing && resizeHandle) {
+        const dx = e.clientX - dragStart.x;
+        const dy = e.clientY - dragStart.y;
+
         let newWidth = initialModule.width;
         let newHeight = initialModule.height;
-        let newX = initialModule.x;
-        let newY = initialModule.y;
 
         // Calculate new dimensions based on handle
+        // Center stays fixed, so we expand/contract equally on both sides
         switch (resizeHandle) {
-          case 'r': // Right
+          case 'r': // Right - expand width
             newWidth = Math.max(20, initialModule.width + dx * 2);
             break;
-          case 'l': // Left
+          case 'l': // Left - expand width
             newWidth = Math.max(20, initialModule.width - dx * 2);
             break;
-          case 't': // Top
+          case 't': // Top - expand height
             newHeight = Math.max(20, initialModule.height - dy * 2);
             break;
-          case 'b': // Bottom
+          case 'b': // Bottom - expand height
             newHeight = Math.max(20, initialModule.height + dy * 2);
             break;
           case 'tr': // Top-right
@@ -98,12 +124,13 @@ export function DraftModuleEditor({
             break;
         }
 
+        // Center stays at initialModule.x, initialModule.y
         onUpdate({
           ...draftModule,
           width: newWidth,
           height: newHeight,
-          x: newX,
-          y: newY,
+          x: initialModule.x,  // Keep center fixed
+          y: initialModule.y,  // Keep center fixed
         });
       }
     };

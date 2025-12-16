@@ -52,9 +52,10 @@ export function useMultiplayer({
     });
 
     // Room state when joining
-    socket.on('room-state', (data: { players: Avatar[], modules: Module[] }) => {
+    socket.on('room-state', (data: { players: Avatar[], modules: Module[], chatHistory?: ChatMessage[] }) => {
       console.log('📦 Received room state:', data);
       console.log('👥 Players in room-state:', data.players.map(p => ({ id: p.id, name: p.name })));
+      console.log('🧱 Modules in room-state:', data.modules?.length || 0);
       
       // Update other players
       otherPlayersRef.current.clear();
@@ -65,8 +66,11 @@ export function useMultiplayer({
       console.log('🗺️ Total players in map:', otherPlayersRef.current.size);
       onPlayersUpdate(Array.from(otherPlayersRef.current.values()));
       
-      // Update modules
-      onModulesUpdate(data.modules);
+      // Update modules - replace all modules with room's modules
+      if (data.modules) {
+        console.log('📥 Loading modules from room:', data.modules.map(m => ({ id: m.id, x: m.x, y: m.y })));
+        onModulesUpdate(data.modules);
+      }
     });
 
     // New player joined
@@ -116,20 +120,27 @@ export function useMultiplayer({
 
     // Module created
     socket.on('module-created', (module: Module) => {
-      console.log('🧱 Module created:', module.id);
-      onModulesUpdate((prev) => [...prev, module]);
+      console.log('🧱 Module created by another player:', module.id);
+      onModulesUpdate((prev: Module[]) => {
+        // Check if module already exists to avoid duplicates
+        if (prev.some(m => m.id === module.id)) {
+          console.log('⚠️ Module already exists, ignoring');
+          return prev;
+        }
+        return [...prev, module];
+      });
     });
 
     // Module updated
     socket.on('module-updated', (module: Module) => {
-      console.log('🔧 Module updated:', module.id);
-      onModulesUpdate((prev) => prev.map(m => m.id === module.id ? module : m));
+      console.log('🔧 Module updated by another player:', module.id);
+      onModulesUpdate((prev: Module[]) => prev.map(m => m.id === module.id ? module : m));
     });
 
     // Module deleted
     socket.on('module-deleted', (moduleId: string) => {
-      console.log('🗑️ Module deleted:', moduleId);
-      onModulesUpdate((prev) => prev.filter(m => m.id !== moduleId));
+      console.log('🗑️ Module deleted by another player:', moduleId);
+      onModulesUpdate((prev: Module[]) => prev.filter(m => m.id !== moduleId));
     });
 
     // Avatar updated
@@ -179,16 +190,19 @@ export function useMultiplayer({
 
   // Emit module creation
   const emitModuleCreate = (module: Module) => {
+    console.log('📤 Emitting module-create:', { id: module.id, width: module.width, height: module.height });
     socketRef.current?.emit('module-create', module);
   };
 
   // Emit module update
   const emitModuleUpdate = (module: Module) => {
+    console.log('📤 Emitting module-update:', module.id);
     socketRef.current?.emit('module-update', module);
   };
 
   // Emit module deletion
   const emitModuleDelete = (moduleId: string) => {
+    console.log('📤 Emitting module-delete:', moduleId);
     socketRef.current?.emit('module-delete', moduleId);
   };
 
