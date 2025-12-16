@@ -119,6 +119,7 @@ export default function App() {
   const [draftModule, setDraftModule] = useState<Module | null>(null); // Module being built (not confirmed yet)
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [copiedModule, setCopiedModule] = useState<Module | null>(null); // Clipboard for copy/paste
 
   // Multiplayer hook
   const {
@@ -191,33 +192,25 @@ export default function App() {
         return;
       }
 
-      // Ctrl/Cmd + C: Copy selected module
+      // Ctrl/Cmd + C: Copy selected module to clipboard
       if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedModule && !draftModule) {
         e.preventDefault();
-        const copiedModule: Module = {
-          ...selectedModule,
-          id: crypto.randomUUID(),
-          x: selectedModule.x + 50, // Offset copy
-          y: selectedModule.y + 50,
-          isDraft: true,
-        };
-        setDraftModule(copiedModule);
-        console.log('📋 Module copied');
+        setCopiedModule(selectedModule);
+        console.log('📋 Module copied to clipboard');
       }
 
-      // Ctrl/Cmd + D: Duplicate selected module (instant)
-      if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectedModule && !draftModule) {
+      // Ctrl/Cmd + V: Paste module from clipboard
+      if ((e.ctrlKey || e.metaKey) && e.key === 'v' && copiedModule && !draftModule) {
         e.preventDefault();
-        const duplicatedModule: Module = {
-          ...selectedModule,
+        const pastedModule: Module = {
+          ...copiedModule,
           id: crypto.randomUUID(),
-          x: selectedModule.x + 50,
-          y: selectedModule.y + 50,
-          isDraft: false,
+          x: copiedModule.x + 50, // Offset paste
+          y: copiedModule.y + 50,
+          isDraft: true,
         };
-        setModules([...modules, duplicatedModule]);
-        emitModuleCreate(duplicatedModule);
-        console.log('✅ Module duplicated');
+        setDraftModule(pastedModule);
+        console.log('📌 Module pasted, adjust position and confirm');
       }
 
       // Delete/Backspace: Delete selected module
@@ -256,7 +249,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedModule, draftModule, modules, mode, showShortcuts]);
+  }, [selectedModule, draftModule, modules, mode, showShortcuts, copiedModule]);
 
   const getRoomName = (coords: RoomCoords): string => {
     if (coords.x === 0 && coords.y === 0) return 'Plaza Central';
@@ -564,8 +557,8 @@ export default function App() {
                 <kbd className="px-2 py-1 bg-slate-700 rounded text-slate-200">Ctrl+C</kbd>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-300">Duplicar módulo</span>
-                <kbd className="px-2 py-1 bg-slate-700 rounded text-slate-200">Ctrl+D</kbd>
+                <span className="text-slate-300">Pegar módulo</span>
+                <kbd className="px-2 py-1 bg-slate-700 rounded text-slate-200">Ctrl+V</kbd>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-300">Eliminar módulo</span>
@@ -602,6 +595,20 @@ export default function App() {
       >
         <span className="text-lg">⌨️</span>
       </button>
+
+      {/* Clipboard indicator */}
+      {copiedModule && (
+        <div className="fixed bottom-20 left-6 bg-green-600/90 backdrop-blur-sm text-white text-xs px-3 py-2 rounded-lg shadow-lg z-40 flex items-center gap-2">
+          <span>📋</span>
+          <span>Módulo copiado - Ctrl+V para pegar</span>
+          <button 
+            onClick={() => setCopiedModule(null)}
+            className="ml-2 hover:bg-white/20 rounded px-1"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Overlays */}
       {showAvatarCustomizer && (
