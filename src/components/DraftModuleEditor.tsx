@@ -152,9 +152,7 @@ export function DraftModuleEditor({
     };
 
     const handleMouseUp = (e: MouseEvent) => {
-      // Prevent this mouseup from triggering canvas click
-      e.stopPropagation();
-      e.preventDefault();
+      const wasInteracting = isDragging || isResizing;
       
       // On mouse up, commit changes to parent
       if (tempPosition) {
@@ -172,17 +170,31 @@ export function DraftModuleEditor({
       setIsResizing(false);
       setResizeHandle(null);
       
-      // Set flag to prevent immediate click on canvas
-      setJustFinishedInteraction(true);
-      setTimeout(() => setJustFinishedInteraction(false), 50);
+      // If we were interacting, prevent the next click event on canvas
+      if (wasInteracting) {
+        setJustFinishedInteraction(true);
+        
+        // Add a one-time click blocker
+        const blockNextClick = (clickEvent: MouseEvent) => {
+          clickEvent.stopPropagation();
+          clickEvent.preventDefault();
+          document.removeEventListener('click', blockNextClick, true);
+          setTimeout(() => setJustFinishedInteraction(false), 50);
+        };
+        
+        // Use capture phase to intercept before canvas receives it
+        setTimeout(() => {
+          document.addEventListener('click', blockNextClick, true);
+        }, 0);
+      }
     };
 
     document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp, true); // Use capture phase
+    document.addEventListener('mouseup', handleMouseUp);
 
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp, true); // Use capture phase
+      document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isDragging, isResizing, resizeHandle, dragStart, initialModule, draftModule, onUpdate, canvasWidth, canvasHeight, tempPosition]);
 
@@ -197,26 +209,8 @@ export function DraftModuleEditor({
   const halfWidth = displayWidth / 2;
   const halfHeight = displayHeight / 2;
 
-  const handleOverlayClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-  };
-
   return (
     <g>
-      {/* Invisible overlay to prevent clicks on canvas while draft is active */}
-      <rect
-        x={0}
-        y={0}
-        width={canvasWidth}
-        height={canvasHeight}
-        fill="transparent"
-        pointerEvents="all"
-        onClick={handleOverlayClick}
-        onMouseDown={handleOverlayClick}
-        onMouseUp={handleOverlayClick}
-      />
-      
       {/* Draft module with dashed border */}
       <g opacity={0.8}>
         {draftModule.shape === 'square' && (
