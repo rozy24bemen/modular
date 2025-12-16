@@ -477,43 +477,7 @@ export function WorldCanvas({
         </motion.g>
       </svg>
 
-      {/* Zoom indicator */}
-      <div className="absolute top-4 right-4 bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-lg px-3 py-2">
-        <div className="flex items-center gap-2">
-          <p className="text-slate-300 text-sm flex items-center gap-2">
-            🔍 Zoom: <span className="font-mono font-bold">{(zoom * 100).toFixed(0)}%</span>
-          </p>
-          {(zoom !== 1 || viewBoxOffset.x !== 0 || viewBoxOffset.y !== 0) && (
-            <button
-              onClick={() => { setZoom(1); setViewBoxOffset({ x: 0, y: 0 }); }}
-              className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-2 py-0.5 rounded transition-colors"
-              title="Reset zoom and pan"
-            >
-              Reset
-            </button>
-          )}
-        </div>
-        <p className="text-slate-400 text-xs mt-1">
-          Rueda: zoom • Rueda central: desplazar
-        </p>
-      </div>
 
-      {/* Mode indicator */}
-      <div className="absolute top-4 left-4 bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-lg px-3 py-2">
-        <p className="text-slate-300 text-sm">
-          {mode === 'explore' ? (
-            <>🚶 Usa <kbd className="px-1.5 py-0.5 bg-slate-700 rounded text-xs">WASD</kbd> para moverte</>
-          ) : (
-            <>🔨 Click para crear módulos</>
-          )}
-        </p>
-      </div>
-
-      {/* Mini stats */}
-      <div className="absolute top-4 right-4 bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-300">
-        <div>👥 {otherAvatars.length + 1} jugadores</div>
-        <div>🧱 {modules.length} módulos</div>
-      </div>
     </div>
   );
 }

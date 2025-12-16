@@ -9,7 +9,7 @@ interface ChatPanelProps {
 
 export function ChatPanel({ messages, onSendMessage }: ChatPanelProps) {
   const [inputValue, setInputValue] = useState('');
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(true); // Start closed
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -33,12 +33,13 @@ export function ChatPanel({ messages, onSendMessage }: ChatPanelProps) {
     return (
       <button
         onClick={() => setIsMinimized(false)}
-        className="fixed bottom-4 right-4 bg-purple-600 hover:bg-purple-700 text-white rounded-full p-4 shadow-lg transition-all flex items-center gap-2"
+        className="fixed bottom-6 right-6 bg-purple-600 hover:bg-purple-700 text-white rounded-full p-4 shadow-2xl transition-all hover:scale-110 z-50"
+        title="Abrir chat"
       >
-        <MessageCircle size={24} />
+        <MessageCircle size={28} />
         {messages.length > 0 && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
-            {messages.length}
+          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold min-w-[24px] h-6 rounded-full flex items-center justify-center px-1.5 shadow-lg animate-pulse">
+            {messages.length > 99 ? '99+' : messages.length}
           </span>
         )}
       </button>
@@ -46,9 +47,9 @@ export function ChatPanel({ messages, onSendMessage }: ChatPanelProps) {
   }
 
   return (
-    <div className="w-80 bg-slate-800 border-l border-slate-700 flex flex-col">
+    <div className="fixed bottom-6 right-6 w-96 h-[500px] bg-slate-800/95 backdrop-blur-sm border border-slate-700 rounded-xl shadow-2xl flex flex-col z-50">
       {/* Header */}
-      <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+      <div className="p-4 border-b border-slate-700 flex items-center justify-between rounded-t-xl">
         <div className="flex items-center gap-2">
           <MessageCircle size={18} className="text-purple-400" />
           <h2 className="text-white">Chat</h2>

@@ -465,13 +465,13 @@ export default function App() {
             onUpdateModule={handleUpdateModule}
           />
         )}
-
-        {/* Chat Panel */}
-        <ChatPanel
-          messages={chatMessages}
-          onSendMessage={handleSendMessage}
-        />
       </div>
+
+      {/* Chat Panel - Floating */}
+      <ChatPanel
+        messages={chatMessages}
+        onSendMessage={handleSendMessage}
+      />
 
       {/* Overlays */}
       {showAvatarCustomizer && (
