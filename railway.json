@@ -5,7 +5,7 @@
     "buildCommand": "npm install && npm run build && cd server && npm install"
   },
   "deploy": {
-    "startCommand": "NODE_ENV=production node server/index-unified.js",
+    "startCommand": "node start.js",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }
