@@ -41,6 +41,8 @@ export function WorldCanvas({
   const [targetPosition, setTargetPosition] = useState<{ x: number; y: number } | null>(null);
   const [zoom, setZoom] = useState(1); // Zoom level: 1 = normal, 2 = 2x zoom in, 0.5 = 2x zoom out
   const [viewBoxOffset, setViewBoxOffset] = useState({ x: 0, y: 0 }); // Offset for panning
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   
   // Fixed world dimensions for consistent multiplayer experience
   const WORLD_WIDTH = 800;
@@ -184,6 +186,39 @@ export function WorldCanvas({
 
     setZoom(newZoom);
     setViewBoxOffset({ x: newOffsetX, y: newOffsetY });
+  };
+
+  const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
+    // Middle mouse button (button 1)
+    if (e.button === 1) {
+      e.preventDefault();
+      setIsPanning(true);
+      setPanStart({ x: e.clientX, y: e.clientY });
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!isPanning) return;
+
+    const dx = e.clientX - panStart.x;
+    const dy = e.clientY - panStart.y;
+
+    // Convert pixel movement to viewBox units (accounting for zoom)
+    const viewBoxDx = -dx / zoom;
+    const viewBoxDy = -dy / zoom;
+
+    setViewBoxOffset({
+      x: viewBoxOffset.x + viewBoxDx,
+      y: viewBoxOffset.y + viewBoxDy,
+    });
+
+    setPanStart({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleMouseUp = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (e.button === 1) {
+      setIsPanning(false);
+    }
   };
 
   const renderModule = (module: Module) => {
@@ -374,10 +409,15 @@ export function WorldCanvas({
       <svg 
         ref={svgRef}
         className="w-full h-full" 
+        style={{ cursor: isPanning ? 'grabbing' : 'crosshair' }}
         viewBox={`${viewBoxOffset.x} ${viewBoxOffset.y} ${WORLD_WIDTH / zoom} ${WORLD_HEIGHT / zoom}`} 
         preserveAspectRatio="xMidYMid meet"
         onClick={handleCanvasClick}
         onWheel={handleWheel}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={() => setIsPanning(false)}
       >
         {/* Room boundaries with visible borders */}
         <rect
@@ -438,19 +478,24 @@ export function WorldCanvas({
       </svg>
 
       {/* Zoom indicator */}
-      <div className="absolute top-4 right-4 bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-lg px-3 py-2 flex items-center gap-2">
-        <p className="text-slate-300 text-sm flex items-center gap-2">
-          🔍 Zoom: <span className="font-mono font-bold">{(zoom * 100).toFixed(0)}%</span>
+      <div className="absolute top-4 right-4 bg-slate-900/80 backdrop-blur-sm border border-slate-700 rounded-lg px-3 py-2">
+        <div className="flex items-center gap-2">
+          <p className="text-slate-300 text-sm flex items-center gap-2">
+            🔍 Zoom: <span className="font-mono font-bold">{(zoom * 100).toFixed(0)}%</span>
+          </p>
+          {(zoom !== 1 || viewBoxOffset.x !== 0 || viewBoxOffset.y !== 0) && (
+            <button
+              onClick={() => { setZoom(1); setViewBoxOffset({ x: 0, y: 0 }); }}
+              className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-2 py-0.5 rounded transition-colors"
+              title="Reset zoom and pan"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+        <p className="text-slate-400 text-xs mt-1">
+          Rueda: zoom • Rueda central: desplazar
         </p>
-        {zoom !== 1 && (
-          <button
-            onClick={() => { setZoom(1); setViewBoxOffset({ x: 0, y: 0 }); }}
-            className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-2 py-0.5 rounded transition-colors"
-            title="Reset zoom"
-          >
-            Reset
-          </button>
-        )}
       </div>
 
       {/* Mode indicator */}
