@@ -267,14 +267,23 @@ export default function App() {
   };
 
   const handleAddModule = (x: number, y: number) => {
+    const width = 60;
+    const height = 60;
+    const canvasWidth = 800;
+    const canvasHeight = 600;
+    
+    // Clamp position to canvas bounds to prevent out-of-bounds creation
+    const clampedX = Math.max(width / 2, Math.min(canvasWidth - width / 2, x));
+    const clampedY = Math.max(height / 2, Math.min(canvasHeight - height / 2, y));
+    
     const newModule: Module = {
       id: crypto.randomUUID(), // Generate valid UUID
-      x,
-      y,
+      x: clampedX,
+      y: clampedY,
       shape: 'square',
       size: 40,
-      width: 60,  // Initial width
-      height: 60, // Initial height
+      width,
+      height,
       color: '#3b82f6',
       behavior: 'none',
       createdBy: profile?.id || 'guest',
