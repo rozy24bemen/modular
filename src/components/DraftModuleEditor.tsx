@@ -174,18 +174,16 @@ export function DraftModuleEditor({
       if (wasInteracting) {
         setJustFinishedInteraction(true);
         
-        // Add a one-time click blocker
+        // Add a one-time click blocker IMMEDIATELY (no setTimeout)
         const blockNextClick = (clickEvent: MouseEvent) => {
           clickEvent.stopPropagation();
           clickEvent.preventDefault();
           document.removeEventListener('click', blockNextClick, true);
-          setTimeout(() => setJustFinishedInteraction(false), 50);
+          setTimeout(() => setJustFinishedInteraction(false), 100);
         };
         
-        // Use capture phase to intercept before canvas receives it
-        setTimeout(() => {
-          document.addEventListener('click', blockNextClick, true);
-        }, 0);
+        // Install blocker immediately in capture phase
+        document.addEventListener('click', blockNextClick, true);
       }
     };
 
