@@ -140,12 +140,12 @@ export function useMultiplayer({
   }, []);
 
   // Update room when coordinates change
+  useEffect(() => {
     if (socketRef.current?.connected) {
       socketRef.current.emit('join-room', {
         coords: currentCoords,
         avatar: playerAvatar,
         userId: userId,
-      });vatar: playerAvatar,
       });
       
       // Clear other players when changing rooms
