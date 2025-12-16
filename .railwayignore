@@ -1,2 +1,0 @@
-# Ignore Vite config to prevent static site detection
-vite.config.ts
