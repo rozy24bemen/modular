@@ -128,6 +128,12 @@ export function WorldCanvas({
   }, [mode, keys, playerAvatar, targetPosition, onMoveAvatar, onCheckRoomTransition]);
 
   const handleCanvasClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    // Ignore clicks if we just finished interacting with draft module
+    if (isInteractingWithDraft) {
+      setIsInteractingWithDraft(false);
+      return;
+    }
+
     // Convert client coordinates to SVG coordinates (handles responsive scaling)
     const coords = clientToSVGCoords(e.clientX, e.clientY);
     if (!coords) return;

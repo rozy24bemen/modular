@@ -28,13 +28,24 @@ export function DraftModuleEditor({
   const [initialModule, setInitialModule] = useState(draftModule);
   // Local state for smooth dragging without parent re-render lag
   const [tempPosition, setTempPosition] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [justFinishedInteraction, setJustFinishedInteraction] = useState(false);
+
+  const clientToSVGCoords = (clientX: number, clientY: number, svgElement: SVGSVGElement) => {
+    const pt = svgElement.createSVGPoint();
+    pt.x = clientX;
+    pt.y = clientY;
+    const ctm = svgElement.getScreenCTM();
+    if (!ctm) return null;
+    return pt.matrixTransform(ctm.inverse());
+  };
 
   const handleMouseDown = (e: React.MouseEvent, handle: ResizeHandle = null) => {
     e.stopPropagation();
+    e.preventDefault();
     
-    // Get canvas bounding rect for proper coordinate conversion
-    const canvas = (e.target as SVGElement).ownerSVGElement;
-    const rect = canvas?.getBoundingClientRect();
+    // Get SVG element for coordinate conversion
+    const svg = (e.target as SVGElement).ownerSVGElement;
+    if (!svg) return;
     
     if (handle) {
       // Resizing
@@ -45,14 +56,13 @@ export function DraftModuleEditor({
         y: e.clientY,
       });
     } else {
-      // Dragging - calculate offset from module center
+      // Dragging - calculate offset from module center using SVG coords
       setIsDragging(true);
-      if (rect) {
-        const canvasX = e.clientX - rect.left;
-        const canvasY = e.clientY - rect.top;
+      const svgCoords = clientToSVGCoords(e.clientX, e.clientY, svg);
+      if (svgCoords) {
         setDragStart({
-          x: canvasX - draftModule.x,  // Store offset from center
-          y: canvasY - draftModule.y,
+          x: svgCoords.x - draftModule.x,  // Store offset from center
+          y: svgCoords.y - draftModule.y,
         });
       }
     }
@@ -65,28 +75,30 @@ export function DraftModuleEditor({
 
     const handleMouseMove = (e: MouseEvent) => {
       if (isDragging) {
-        // Get canvas coordinates
-        const canvas = document.querySelector('.world-canvas-container svg');
-        const rect = canvas?.getBoundingClientRect();
-        if (!rect) return;
+        // Get SVG element for coordinate conversion
+        const svg = document.querySelector('.world-canvas-container svg') as SVGSVGElement;
+        if (!svg) return;
 
-        const canvasX = e.clientX - rect.left;
-        const canvasY = e.clientY - rect.top;
+        // Convert client coords to SVG coords
+        const svgCoords = clientToSVGCoords(e.clientX, e.clientY, svg);
+        if (!svgCoords) return;
 
         // Apply the offset stored in dragStart (distance from center)
-        const newX = canvasX - dragStart.x;
-        const newY = canvasY - dragStart.y;
+        const newX = svgCoords.x - dragStart.x;
+        const newY = svgCoords.y - dragStart.y;
 
         // Clamp to canvas bounds
-        const clampedX = Math.max(draftModule.width / 2, Math.min(canvasWidth - draftModule.width / 2, newX));
-        const clampedY = Math.max(draftModule.height / 2, Math.min(canvasHeight - draftModule.height / 2, newY));
+        const currentWidth = tempPosition?.width ?? draftModule.width;
+        const currentHeight = tempPosition?.height ?? draftModule.height;
+        const clampedX = Math.max(currentWidth / 2, Math.min(canvasWidth - currentWidth / 2, newX));
+        const clampedY = Math.max(currentHeight / 2, Math.min(canvasHeight - currentHeight / 2, newY));
 
         // Update local state immediately for smooth visual feedback
         setTempPosition({
           x: clampedX,
           y: clampedY,
-          width: draftModule.width,
-          height: draftModule.height,
+          width: currentWidth,
+          height: currentHeight,
         });
       } else if (isResizing && resizeHandle) {
         const dx = e.clientX - dragStart.x;
@@ -139,7 +151,11 @@ export function DraftModuleEditor({
       }
     };
 
-    const handleMouseUp = () => {
+    const handleMouseUp = (e: MouseEvent) => {
+      // Prevent this mouseup from triggering canvas click
+      e.stopPropagation();
+      e.preventDefault();
+      
       // On mouse up, commit changes to parent
       if (tempPosition) {
         onUpdate({
@@ -155,14 +171,18 @@ export function DraftModuleEditor({
       setIsDragging(false);
       setIsResizing(false);
       setResizeHandle(null);
+      
+      // Set flag to prevent immediate click on canvas
+      setJustFinishedInteraction(true);
+      setTimeout(() => setJustFinishedInteraction(false), 50);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('mouseup', handleMouseUp, true); // Use capture phase
 
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('mouseup', handleMouseUp, true); // Use capture phase
     };
   }, [isDragging, isResizing, resizeHandle, dragStart, initialModule, draftModule, onUpdate, canvasWidth, canvasHeight, tempPosition]);
 
@@ -177,8 +197,26 @@ export function DraftModuleEditor({
   const halfWidth = displayWidth / 2;
   const halfHeight = displayHeight / 2;
 
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+  };
+
   return (
     <g>
+      {/* Invisible overlay to prevent clicks on canvas while draft is active */}
+      <rect
+        x={0}
+        y={0}
+        width={canvasWidth}
+        height={canvasHeight}
+        fill="transparent"
+        pointerEvents="all"
+        onClick={handleOverlayClick}
+        onMouseDown={handleOverlayClick}
+        onMouseUp={handleOverlayClick}
+      />
+      
       {/* Draft module with dashed border */}
       <g opacity={0.8}>
         {draftModule.shape === 'square' && (
