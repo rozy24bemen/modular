@@ -118,6 +118,7 @@ export default function App() {
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const [draftModule, setDraftModule] = useState<Module | null>(null); // Module being built (not confirmed yet)
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   // Multiplayer hook
   const {
@@ -181,6 +182,81 @@ export default function App() {
 
     return () => clearInterval(interval);
   }, [playerAvatar.chatBubble]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in input field
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      // Ctrl/Cmd + C: Copy selected module
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedModule && !draftModule) {
+        e.preventDefault();
+        const copiedModule: Module = {
+          ...selectedModule,
+          id: crypto.randomUUID(),
+          x: selectedModule.x + 50, // Offset copy
+          y: selectedModule.y + 50,
+          isDraft: true,
+        };
+        setDraftModule(copiedModule);
+        console.log('📋 Module copied');
+      }
+
+      // Ctrl/Cmd + D: Duplicate selected module (instant)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd' && selectedModule && !draftModule) {
+        e.preventDefault();
+        const duplicatedModule: Module = {
+          ...selectedModule,
+          id: crypto.randomUUID(),
+          x: selectedModule.x + 50,
+          y: selectedModule.y + 50,
+          isDraft: false,
+        };
+        setModules([...modules, duplicatedModule]);
+        emitModuleCreate(duplicatedModule);
+        console.log('✅ Module duplicated');
+      }
+
+      // Delete/Backspace: Delete selected module
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedModule && mode === 'build') {
+        e.preventDefault();
+        handleDeleteModule(selectedModule.id);
+      }
+
+      // Escape: Cancel draft or deselect
+      if (e.key === 'Escape') {
+        if (draftModule) {
+          setDraftModule(null);
+          console.log('❌ Draft cancelled');
+        } else if (selectedModule) {
+          setSelectedModule(null);
+        }
+      }
+
+      // Enter: Confirm draft
+      if (e.key === 'Enter' && draftModule) {
+        e.preventDefault();
+        handleConfirmModule();
+      }
+
+      // B: Toggle build mode
+      if (e.key === 'b' && !draftModule) {
+        handleModeToggle();
+      }
+
+      // ? or /: Toggle shortcuts help
+      if ((e.key === '?' || e.key === '/') && !draftModule) {
+        e.preventDefault();
+        setShowShortcuts(!showShortcuts);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedModule, draftModule, modules, mode, showShortcuts]);
 
   const getRoomName = (coords: RoomCoords): string => {
     if (coords.x === 0 && coords.y === 0) return 'Plaza Central';
@@ -472,6 +548,60 @@ export default function App() {
         messages={chatMessages}
         onSendMessage={handleSendMessage}
       />
+
+      {/* Keyboard Shortcuts Help */}
+      {showShortcuts && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60]" onClick={() => setShowShortcuts(false)}>
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-white">⌨️ Atajos de Teclado</h3>
+              <button onClick={() => setShowShortcuts(false)} className="text-slate-400 hover:text-white">✕</button>
+            </div>
+            
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-300">Copiar módulo</span>
+                <kbd className="px-2 py-1 bg-slate-700 rounded text-slate-200">Ctrl+C</kbd>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-300">Duplicar módulo</span>
+                <kbd className="px-2 py-1 bg-slate-700 rounded text-slate-200">Ctrl+D</kbd>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-300">Eliminar módulo</span>
+                <kbd className="px-2 py-1 bg-slate-700 rounded text-slate-200">Del / Backspace</kbd>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-300">Confirmar módulo</span>
+                <kbd className="px-2 py-1 bg-slate-700 rounded text-slate-200">Enter</kbd>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-300">Cancelar / Deseleccionar</span>
+                <kbd className="px-2 py-1 bg-slate-700 rounded text-slate-200">Esc</kbd>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-300">Cambiar modo</span>
+                <kbd className="px-2 py-1 bg-slate-700 rounded text-slate-200">B</kbd>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-300">Ver/ocultar atajos</span>
+                <kbd className="px-2 py-1 bg-slate-700 rounded text-slate-200">?</kbd>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-500 mt-4 text-center">Los atajos no funcionan mientras escribes en el chat</p>
+          </div>
+        </div>
+      )}
+
+      {/* Keyboard shortcuts button */}
+      <button
+        onClick={() => setShowShortcuts(true)}
+        className="fixed bottom-6 left-6 bg-slate-700/80 hover:bg-slate-600 text-slate-300 rounded-full p-3 shadow-lg transition-all hover:scale-110 z-40"
+        title="Ver atajos de teclado (?)"
+      >
+        <span className="text-lg">⌨️</span>
+      </button>
 
       {/* Overlays */}
       {showAvatarCustomizer && (
