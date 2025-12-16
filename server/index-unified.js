@@ -251,7 +251,10 @@ io.on('connection', (socket) => {
   // Player joins a room
   socket.on('join-room', async (data) => {
     const { coords, avatar, userId: requestUserId } = data;
-    userId = requestUserId || socket.id; // Use socket.id as fallback for guests
+    // Only use userId if it's a valid UUID format, otherwise null for guests
+    userId = (requestUserId && requestUserId !== 'guest' && requestUserId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) 
+      ? requestUserId 
+      : null;
     const roomKey = getRoomKey(coords.x, coords.y);
     
     // Leave previous room if any

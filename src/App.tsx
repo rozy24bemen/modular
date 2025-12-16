@@ -198,7 +198,7 @@ export default function App() {
 
   const handleAddModule = (x: number, y: number) => {
     const newModule: Module = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(), // Generate valid UUID
       x,
       y,
       shape: 'square',
