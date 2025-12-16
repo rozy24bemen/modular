@@ -1,17 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import type { Mode, Module, Avatar } from '../App';
+import { DraftModuleEditor } from './DraftModuleEditor';
 
 interface WorldCanvasProps {
   mode: Mode;
   playerAvatar: Avatar;
   otherAvatars: Avatar[];
   modules: Module[];
+  draftModule: Module | null;
   selectedModule: Module | null;
   onSelectModule: (module: Module | null) => void;
   onAddModule: (x: number, y: number) => void;
   onMoveAvatar: (x: number, y: number) => void;
   onCheckRoomTransition: (x: number, y: number) => void;
+  onUpdateModule: (module: Module) => void;
+  onConfirmModule: () => void;
+  onCancelModule: () => void;
 }
 
 export function WorldCanvas({
@@ -19,11 +24,15 @@ export function WorldCanvas({
   playerAvatar,
   otherAvatars,
   modules,
+  draftModule,
   selectedModule,
   onSelectModule,
   onAddModule,
   onMoveAvatar,
   onCheckRoomTransition,
+  onUpdateModule,
+  onConfirmModule,
+  onCancelModule,
 }: WorldCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [keys, setKeys] = useState<Set<string>>(new Set());
@@ -128,18 +137,19 @@ export function WorldCanvas({
 
   const renderModule = (module: Module) => {
     const isSelected = selectedModule?.id === module.id;
+    const halfWidth = module.width / 2;
+    const halfHeight = module.height / 2;
     
     let path = '';
     switch (module.shape) {
       case 'square':
-        const half = module.size / 2;
         return (
           <rect
             key={module.id}
-            x={module.x - half}
-            y={module.y - half}
-            width={module.size}
-            height={module.size}
+            x={module.x - halfWidth}
+            y={module.y - halfHeight}
+            width={module.width}
+            height={module.height}
             fill={module.color}
             stroke={isSelected ? '#fff' : 'rgba(255,255,255,0.2)'}
             strokeWidth={isSelected ? 3 : 1}
@@ -148,11 +158,12 @@ export function WorldCanvas({
         );
       case 'circle':
         return (
-          <circle
+          <ellipse
             key={module.id}
             cx={module.x}
             cy={module.y}
-            r={module.size / 2}
+            rx={halfWidth}
+            ry={halfHeight}
             fill={module.color}
             stroke={isSelected ? '#fff' : 'rgba(255,255,255,0.2)'}
             strokeWidth={isSelected ? 3 : 1}
@@ -160,9 +171,7 @@ export function WorldCanvas({
           />
         );
       case 'triangle':
-        const size = module.size;
-        const height = (Math.sqrt(3) / 2) * size;
-        path = `M ${module.x},${module.y - height / 2} L ${module.x + size / 2},${module.y + height / 2} L ${module.x - size / 2},${module.y + height / 2} Z`;
+        path = `M ${module.x},${module.y - halfHeight} L ${module.x + halfWidth},${module.y + halfHeight} L ${module.x - halfWidth},${module.y + halfHeight} Z`;
         return (
           <path
             key={module.id}
@@ -344,8 +353,20 @@ export function WorldCanvas({
           <text x={WORLD_WIDTH - 15} y={WORLD_HEIGHT / 2} textAnchor="middle" fill="rgba(255, 255, 255, 0.6)" fontSize="10" transform={`rotate(-90 ${WORLD_WIDTH - 15} ${WORLD_HEIGHT / 2})`}>→</text>
         </g>
         
-        {/* Render modules */}
+        {/* Render confirmed modules */}
         {modules.map(renderModule)}
+        
+        {/* Render draft module with editor controls */}
+        {draftModule && (
+          <DraftModuleEditor
+            draftModule={draftModule}
+            onUpdate={onUpdateModule}
+            onConfirm={onConfirmModule}
+            onCancel={onCancelModule}
+            canvasWidth={WORLD_WIDTH}
+            canvasHeight={WORLD_HEIGHT}
+          />
+        )}
         
         {/* Render other avatars */}
         {otherAvatars.map(renderAvatar)}

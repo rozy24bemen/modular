@@ -21,9 +21,13 @@ export interface Module {
   y: number;
   shape: Shape;
   size: number;
+  width: number;  // Width for resizing
+  height: number; // Height for resizing
   color: string;
   behavior: BehaviorType;
   behaviorData?: any;
+  createdBy?: string; // User ID who created it
+  isDraft?: boolean;  // True while being edited, false when confirmed
 }
 
 export interface Avatar {
@@ -111,6 +115,7 @@ export default function App() {
   const [modules, setModules] = useState<Module[]>([]);
 
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
+  const [draftModule, setDraftModule] = useState<Module | null>(null); // Module being built (not confirmed yet)
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
 
   // Multiplayer hook
@@ -141,6 +146,17 @@ export default function App() {
     
     // Center player avatar
     setPlayerAvatar(prev => ({ ...prev, x: centerX, y: centerY }));
+  }, []);
+
+  // Migrate old modules to have width/height if they don't
+  useEffect(() => {
+    setModules(prevModules => 
+      prevModules.map(m => ({
+        ...m,
+        width: m.width || m.size,
+        height: m.height || m.size,
+      }))
+    );
   }, []);
 
   // Clear chat bubbles after 5 seconds
@@ -186,22 +202,52 @@ export default function App() {
       y,
       shape: 'square',
       size: 40,
+      width: 60,  // Initial width
+      height: 60, // Initial height
       color: '#3b82f6',
       behavior: 'none',
+      createdBy: profile?.id || 'guest',
+      isDraft: true, // Mark as draft - not confirmed yet
     };
-    setModules([...modules, newModule]);
+    // Set as draft module for editing (not added to modules yet)
+    setDraftModule(newModule);
     setSelectedModule(newModule);
-    
-    // Emit to multiplayer server
-    emitModuleCreate(newModule);
   };
 
   const handleUpdateModule = (updatedModule: Module) => {
-    setModules(modules.map(m => m.id === updatedModule.id ? updatedModule : m));
-    setSelectedModule(updatedModule);
+    // If it's a draft module, update the draft state
+    if (updatedModule.isDraft) {
+      setDraftModule(updatedModule);
+      setSelectedModule(updatedModule);
+    } else {
+      // Otherwise update the confirmed modules
+      setModules(modules.map(m => m.id === updatedModule.id ? updatedModule : m));
+      setSelectedModule(updatedModule);
+      
+      // Emit to multiplayer server
+      emitModuleUpdate(updatedModule);
+    }
+  };
+
+  const handleConfirmModule = () => {
+    if (!draftModule) return;
     
-    // Emit to multiplayer server
-    emitModuleUpdate(updatedModule);
+    // Remove draft flag and add to confirmed modules
+    const confirmedModule = { ...draftModule, isDraft: false };
+    setModules([...modules, confirmedModule]);
+    
+    // Clear draft state
+    setDraftModule(null);
+    setSelectedModule(null);
+    
+    // Emit to multiplayer server for real-time sync
+    emitModuleCreate(confirmedModule);
+  };
+
+  const handleCancelModule = () => {
+    // Simply discard the draft module
+    setDraftModule(null);
+    setSelectedModule(null);
   };
 
   const handleDeleteModule = (id: string) => {
@@ -384,11 +430,15 @@ export default function App() {
             playerAvatar={playerAvatar}
             otherAvatars={otherAvatars}
             modules={modules}
+            draftModule={draftModule}
             selectedModule={selectedModule}
             onSelectModule={setSelectedModule}
             onAddModule={handleAddModule}
             onMoveAvatar={handleMoveAvatar}
             onCheckRoomTransition={handleCheckRoomTransition}
+            onUpdateModule={handleUpdateModule}
+            onConfirmModule={handleConfirmModule}
+            onCancelModule={handleCancelModule}
           />
           
           {mode === 'build' && (

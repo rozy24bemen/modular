@@ -91,9 +91,12 @@ async function loadRoomModules(roomId) {
       y: m.y,
       shape: m.shape,
       size: m.size,
+      width: m.width || m.size,   // Fallback to size for old modules
+      height: m.height || m.size, // Fallback to size for old modules
       color: m.color,
       behavior: m.behavior,
-      behaviorData: m.behavior_data
+      behaviorData: m.behavior_data,
+      createdBy: m.creator_id  // Include creator info
     }));
   } catch (error) {
     console.error('Error loading modules:', error);
@@ -113,6 +116,8 @@ async function saveModule(roomId, module, creatorId = null) {
         y: module.y,
         shape: module.shape,
         size: module.size,
+        width: module.width || module.size,   // Support new width field
+        height: module.height || module.size, // Support new height field
         color: module.color,
         behavior: module.behavior,
         behavior_data: module.behaviorData
@@ -137,6 +142,8 @@ async function updateModule(moduleId, updates) {
         y: updates.y,
         shape: updates.shape,
         size: updates.size,
+        width: updates.width || updates.size,   // Support new width field
+        height: updates.height || updates.size, // Support new height field
         color: updates.color,
         behavior: updates.behavior,
         behavior_data: updates.behaviorData

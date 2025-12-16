@@ -90,23 +90,39 @@ export function ModuleEditor({ selectedModule, onUpdateModule }: ModuleEditorPro
           </div>
         </div>
 
-        {/* Tamaño */}
+        {/* Dimensiones */}
         <div>
           <label className="text-slate-300 text-sm mb-2 block">
-            Tamaño: {selectedModule.size}px
+            Dimensiones
           </label>
-          <input
-            type="range"
-            min="20"
-            max="100"
-            value={selectedModule.size}
-            onChange={(e) => handleSizeChange(Number(e.target.value))}
-            className="w-full accent-purple-600"
-          />
-          <div className="flex justify-between text-xs text-slate-500 mt-1">
-            <span>20px</span>
-            <span>100px</span>
-          </div>
+          
+          {selectedModule.isDraft ? (
+            <div className="bg-slate-700/50 p-3 rounded-lg border border-slate-600">
+              <p className="text-slate-300 text-sm mb-1">Ancho × Alto</p>
+              <p className="text-white text-lg font-mono">
+                {Math.round(selectedModule.width)} × {Math.round(selectedModule.height)} px
+              </p>
+              <p className="text-slate-400 text-xs mt-2">
+                💡 Usa los controles del canvas para redimensionar
+              </p>
+            </div>
+          ) : (
+            <>
+              <label className="text-slate-400 text-xs mb-1 block">Tamaño base: {selectedModule.size}px</label>
+              <input
+                type="range"
+                min="20"
+                max="100"
+                value={selectedModule.size}
+                onChange={(e) => handleSizeChange(Number(e.target.value))}
+                className="w-full accent-purple-600"
+              />
+              <div className="flex justify-between text-xs text-slate-500 mt-1">
+                <span>20px</span>
+                <span>100px</span>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Color */}
@@ -202,27 +218,28 @@ export function ModuleEditor({ selectedModule, onUpdateModule }: ModuleEditorPro
         <div>
           <label className="text-slate-300 text-sm mb-2 block">Vista previa</label>
           <div className="bg-slate-900 border border-slate-700 rounded-lg p-8 flex items-center justify-center">
-            <svg width="100" height="100">
+            <svg width="120" height="120" viewBox="0 0 120 120">
               {selectedModule.shape === 'square' && (
                 <rect
-                  x={50 - selectedModule.size / 2}
-                  y={50 - selectedModule.size / 2}
-                  width={selectedModule.size}
-                  height={selectedModule.size}
+                  x={60 - (selectedModule.width || selectedModule.size) / 2}
+                  y={60 - (selectedModule.height || selectedModule.size) / 2}
+                  width={selectedModule.width || selectedModule.size}
+                  height={selectedModule.height || selectedModule.size}
                   fill={selectedModule.color}
                 />
               )}
               {selectedModule.shape === 'circle' && (
-                <circle
-                  cx={50}
-                  cy={50}
-                  r={selectedModule.size / 2}
+                <ellipse
+                  cx={60}
+                  cy={60}
+                  rx={(selectedModule.width || selectedModule.size) / 2}
+                  ry={(selectedModule.height || selectedModule.size) / 2}
                   fill={selectedModule.color}
                 />
               )}
               {selectedModule.shape === 'triangle' && (
                 <path
-                  d={`M 50,${50 - selectedModule.size / 2} L ${50 + selectedModule.size / 2},${50 + selectedModule.size / 2} L ${50 - selectedModule.size / 2},${50 + selectedModule.size / 2} Z`}
+                  d={`M 60,${60 - (selectedModule.height || selectedModule.size) / 2} L ${60 + (selectedModule.width || selectedModule.size) / 2},${60 + (selectedModule.height || selectedModule.size) / 2} L ${60 - (selectedModule.width || selectedModule.size) / 2},${60 + (selectedModule.height || selectedModule.size) / 2} Z`}
                   fill={selectedModule.color}
                 />
               )}
