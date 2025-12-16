@@ -249,9 +249,11 @@ io.on('connection', (socket) => {
     
     // Add player to active room
     const activeRoom = getActiveRoom(roomKey);
+    // Remove client's id to prevent overwriting socket.id
+    const { id: _clientId, ...avatarWithoutId } = avatar;
     playerData = {
       id: socket.id,
-      ...avatar,
+      ...avatarWithoutId,
       coords
     };
     activeRoom.players.set(socket.id, playerData);
