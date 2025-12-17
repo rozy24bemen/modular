@@ -237,6 +237,13 @@ export function DraftModuleEditor({
   const halfWidth = displayWidth / 2;
   const halfHeight = displayHeight / 2;
 
+  // Check if module is within world bounds (0-800, 0-600)
+  const isWithinBounds = 
+    displayX - halfWidth >= 0 &&
+    displayX + halfWidth <= canvasWidth &&
+    displayY - halfHeight >= 0 &&
+    displayY + halfHeight <= canvasHeight;
+
   return (
     <g>
       {/* Draft module with dashed border */}
@@ -364,11 +371,16 @@ export function DraftModuleEditor({
       >
         <div className="flex justify-center">
           <button
-            onClick={onConfirm}
-            className="w-12 h-12 bg-green-600 hover:bg-green-700 text-white rounded-full flex items-center justify-center shadow-2xl transition-all hover:scale-110"
-            title="Confirmar (Enter) | Click derecho para cancelar"
+            onClick={isWithinBounds ? onConfirm : undefined}
+            disabled={!isWithinBounds}
+            className={`w-12 h-12 text-white rounded-full flex items-center justify-center shadow-2xl transition-all ${
+              isWithinBounds 
+                ? 'bg-green-600 hover:bg-green-700 hover:scale-110 cursor-pointer' 
+                : 'bg-red-600 opacity-50 cursor-not-allowed'
+            }`}
+            title={isWithinBounds ? "Confirmar (Enter) | Click derecho para cancelar" : "Módulo fuera de límites - Muévelo dentro de la sala"}
           >
-            <Check size={24} />
+            {isWithinBounds ? <Check size={24} /> : <X size={24} />}
           </button>
         </div>
       </foreignObject>
