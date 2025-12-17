@@ -114,9 +114,10 @@ export default function App() {
 
   // Modules placed in the world (loaded from database)
   const [modules, setModules] = useState<Module[]>([]);
-  const [modulesHistory, setModulesHistory] = useState<Module[][]>([]); // History for undo
+  const [undoStack, setUndoStack] = useState<Module[][]>([]); // Stack for undo
+  const [redoStack, setRedoStack] = useState<Module[][]>([]); // Stack for redo
 
-  const [selectedModule, setSelectedModule] = useState<Module | null>(null);
+  const [selectedModules, setSelectedModules] = useState<Module[]>([]); // Multiple selection support
   const [draftModule, setDraftModule] = useState<Module | null>(null); // Module being built (not confirmed yet)
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -194,16 +195,23 @@ export default function App() {
       }
 
       // Ctrl/Cmd + Z: Undo last action
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         handleUndo();
         console.log('↩️ Undo');
       }
 
-      // Ctrl/Cmd + C: Copy selected module to clipboard
-      if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedModule && !draftModule) {
+      // Ctrl/Cmd + Y or Ctrl/Cmd + Shift + Z: Redo last undone action
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
         e.preventDefault();
-        setCopiedModule(selectedModule);
+        handleRedo();
+        console.log('↪️ Redo');
+      }
+
+      // Ctrl/Cmd + C: Copy selected module to clipboard
+      if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedModules.length > 0 && !draftModule) {
+        e.preventDefault();
+        setCopiedModule(selectedModules[0]); // Copy first selected module
         console.log('📋 Module copied to clipboard');
       }
 
@@ -221,10 +229,10 @@ export default function App() {
         console.log('📌 Module pasted, adjust position and confirm');
       }
 
-      // Delete/Backspace: Delete selected module
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedModule && mode === 'build') {
+      // Delete/Backspace: Delete selected modules
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedModules.length > 0 && mode === 'build') {
         e.preventDefault();
-        handleDeleteModule(selectedModule.id);
+        handleDeleteModules(selectedModules.map(m => m.id));
       }
 
       // Escape: Cancel draft or deselect
@@ -232,8 +240,8 @@ export default function App() {
         if (draftModule) {
           setDraftModule(null);
           console.log('❌ Draft cancelled');
-        } else if (selectedModule) {
-          setSelectedModule(null);
+        } else if (selectedModules.length > 0) {
+          setSelectedModules([]);
         }
       }
 
@@ -257,7 +265,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedModule, draftModule, modules, mode, showShortcuts, copiedModule, modulesHistory]);
+  }, [selectedModules, draftModule, modules, mode, showShortcuts, copiedModule, undoStack, redoStack]);
 
   const getRoomName = (coords: RoomCoords): string => {
     if (coords.x === 0 && coords.y === 0) return 'Plaza Central';
@@ -270,7 +278,7 @@ export default function App() {
 
   const handleModeToggle = () => {
     setMode(mode === 'explore' ? 'build' : 'explore');
-    setSelectedModule(null);
+    setSelectedModules([]);
     setDraftModule(null); // Clear draft when switching modes
   };
 
@@ -296,22 +304,33 @@ export default function App() {
     };
     // Set as draft module for editing (not added to modules yet)
     setDraftModule(newModule);
-    setSelectedModule(newModule);
+    setSelectedModules([]);
   };
 
   const handleUpdateModule = (updatedModule: Module) => {
     // If it's a draft module, update the draft state
     if (updatedModule.isDraft) {
       setDraftModule(updatedModule);
-      setSelectedModule(updatedModule);
     } else {
       // Otherwise update the confirmed modules
       setModules(modules.map(m => m.id === updatedModule.id ? updatedModule : m));
-      setSelectedModule(updatedModule);
+      setSelectedModules([updatedModule]);
       
       // Emit to multiplayer server
       emitModuleUpdate(updatedModule);
     }
+  };
+
+  const handleEditModule = (module: Module) => {
+    // Convert confirmed module to draft for editing
+    const draftVersion = { ...module, isDraft: true };
+    setDraftModule(draftVersion);
+    setSelectedModules([]);
+    
+    // Remove from confirmed modules temporarily
+    setModules(modules.filter(m => m.id !== module.id));
+    
+    console.log('✏️ Editing module:', module.id);
   };
 
   const handleConfirmModule = () => {
@@ -322,52 +341,104 @@ export default function App() {
     
     console.log('✅ Confirming module:', draftModule.id);
     
-    // Save current state to history
-    setModulesHistory([...modulesHistory, modules]);
+    // Save current state to undo stack and clear redo stack
+    setUndoStack([...undoStack, modules]);
+    setRedoStack([]);
     
     // Remove draft flag and add to confirmed modules
     const confirmedModule = { ...draftModule, isDraft: false };
-    setModules([...modules, confirmedModule]);
+    
+    // Check if this module already existed (editing) or is new (creating)
+    const existingIndex = modules.findIndex(m => m.id === draftModule.id);
+    if (existingIndex >= 0) {
+      // Update existing module
+      const updatedModules = [...modules];
+      updatedModules[existingIndex] = confirmedModule;
+      setModules(updatedModules);
+      console.log('📡 Updating existing module...');
+      emitModuleUpdate(confirmedModule);
+    } else {
+      // Create new module
+      setModules([...modules, confirmedModule]);
+      console.log('📡 Creating new module...');
+      emitModuleCreate(confirmedModule);
+    }
     
     // Clear draft state
     setDraftModule(null);
-    setSelectedModule(null);
-    
-    // Emit to multiplayer server for real-time sync
-    console.log('📡 Emitting module to server...');
-    emitModuleCreate(confirmedModule);
+    setSelectedModules([]);
   };
 
   const handleCancelModule = () => {
     // Simply discard the draft module
     setDraftModule(null);
-    setSelectedModule(null);
+    setSelectedModules([]);
   };
 
-  const handleDeleteModule = (id: string) => {
-    // Save current state to history
-    setModulesHistory([...modulesHistory, modules]);
+  const handleDeleteModules = (ids: string[]) => {
+    // Save current state to undo stack and clear redo stack
+    setUndoStack([...undoStack, modules]);
+    setRedoStack([]);
     
-    setModules(modules.filter(m => m.id !== id));
-    setSelectedModule(null);
+    setModules(modules.filter(m => !ids.includes(m.id)));
+    setSelectedModules([]);
     
-    // Emit to multiplayer server
-    emitModuleDelete(id);
+    // Emit to multiplayer server for each deleted module
+    ids.forEach(id => emitModuleDelete(id));
   };
 
   const handleUndo = () => {
-    if (modulesHistory.length === 0) return;
+    if (undoStack.length === 0) return;
     
-    // Get last state from history
-    const previousState = modulesHistory[modulesHistory.length - 1];
+    // Get last state from undo stack
+    const previousState = undoStack[undoStack.length - 1];
+    
+    // Save current state to redo stack
+    setRedoStack([...redoStack, modules]);
+    
+    // Restore previous state
     setModules(previousState);
     
-    // Remove last state from history
-    setModulesHistory(modulesHistory.slice(0, -1));
+    // Remove last state from undo stack
+    setUndoStack(undoStack.slice(0, -1));
     
     // Clear selection
-    setSelectedModule(null);
+    setSelectedModules([]);
     setDraftModule(null);
+  };
+
+  const handleRedo = () => {
+    if (redoStack.length === 0) return;
+    
+    // Get last state from redo stack
+    const nextState = redoStack[redoStack.length - 1];
+    
+    // Save current state to undo stack
+    setUndoStack([...undoStack, modules]);
+    
+    // Restore next state
+    setModules(nextState);
+    
+    // Remove last state from redo stack
+    setRedoStack(redoStack.slice(0, -1));
+    
+    // Clear selection
+    setSelectedModules([]);
+    setDraftModule(null);
+  };
+
+  const handleSelectModules = (newSelection: Module[]) => {
+    setSelectedModules(newSelection);
+  };
+
+  const handleToggleModuleSelection = (module: Module) => {
+    // Toggle individual module in selection
+    const isSelected = selectedModules.some(m => m.id === module.id);
+    if (isSelected) {
+      setSelectedModules(selectedModules.filter(m => m.id !== module.id));
+    } else {
+      setSelectedModules([...selectedModules, module]);
+    }
   };
 
   const handleSendMessage = (message: string) => {
@@ -569,9 +640,11 @@ export default function App() {
             otherAvatars={otherAvatars}
             modules={modules}
             draftModule={draftModule}
-            selectedModule={selectedModule}
-            onSelectModule={setSelectedModule}
+            selectedModules={selectedModules}
+            onSelectModules={handleSelectModules}
+            onToggleModuleSelection={handleToggleModuleSelection}
             onAddModule={handleAddModule}
+            onEditModule={handleEditModule}
             onMoveAvatar={handleMoveAvatar}
             onCheckRoomTransition={handleCheckRoomTransition}
             onUpdateModule={handleUpdateModule}
@@ -581,8 +654,8 @@ export default function App() {
           
           {mode === 'build' && (
             <Toolbar
-              onDeleteModule={() => selectedModule && handleDeleteModule(selectedModule.id)}
-              hasSelection={selectedModule !== null}
+              onDeleteModule={() => selectedModules.length > 0 && handleDeleteModules(selectedModules.map(m => m.id))}
+              hasSelection={selectedModules.length > 0}
             />
           )}
         </div>
@@ -590,7 +663,7 @@ export default function App() {
         {/* Right Sidebar - Module Editor (Build Mode) - Always visible */}
         {mode === 'build' && (
           <ModuleEditor
-            selectedModule={selectedModule || draftModule}
+            selectedModule={selectedModules[0] || draftModule}
             onUpdateModule={handleUpdateModule}
           />
         )}
@@ -613,6 +686,22 @@ export default function App() {
             
             <div className="space-y-3 text-sm">
               <div className="flex justify-between items-center">
+                <span className="text-slate-300">Deshacer acción</span>
+                <kbd className="px-2 py-1 bg-slate-700 rounded text-slate-200">Ctrl+Z</kbd>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-300">Rehacer acción</span>
+                <kbd className="px-2 py-1 bg-slate-700 rounded text-slate-200">Ctrl+Y</kbd>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-300">Editar módulo</span>
+                <kbd className="px-2 py-1 bg-slate-700 rounded text-slate-200">Ctrl+Click</kbd>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-300">Selección múltiple</span>
+                <kbd className="px-2 py-1 bg-slate-700 rounded text-slate-200">Ctrl+Drag</kbd>
+              </div>
+              <div className="flex justify-between items-center">
                 <span className="text-slate-300">Copiar módulo</span>
                 <kbd className="px-2 py-1 bg-slate-700 rounded text-slate-200">Ctrl+C</kbd>
               </div>
@@ -621,15 +710,15 @@ export default function App() {
                 <kbd className="px-2 py-1 bg-slate-700 rounded text-slate-200">Ctrl+V</kbd>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-300">Eliminar módulo</span>
+                <span className="text-slate-300">Eliminar módulo(s)</span>
                 <kbd className="px-2 py-1 bg-slate-700 rounded text-slate-200">Del / Backspace</kbd>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-300">Confirmar módulo</span>
-                <kbd className="px-2 py-1 bg-slate-700 rounded text-slate-200">Enter / ✓ verde</kbd>
+                <kbd className="px-2 py-1 bg-slate-700 rounded text-slate-200">Enter / Click fuera</kbd>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-300">Cancelar módulo draft</span>
+                <span className="text-slate-300">Cancelar draft</span>
                 <kbd className="px-2 py-1 bg-slate-700 rounded text-slate-200">Click derecho / Esc</kbd>
               </div>
               <div className="flex justify-between items-center">

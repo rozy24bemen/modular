@@ -9,9 +9,11 @@ interface WorldCanvasProps {
   otherAvatars: Avatar[];
   modules: Module[];
   draftModule: Module | null;
-  selectedModule: Module | null;
-  onSelectModule: (module: Module | null) => void;
+  selectedModules: Module[];
+  onSelectModules: (modules: Module[]) => void;
+  onToggleModuleSelection: (module: Module) => void;
   onAddModule: (x: number, y: number) => void;
+  onEditModule: (module: Module) => void;
   onMoveAvatar: (x: number, y: number) => void;
   onCheckRoomTransition: (x: number, y: number) => void;
   onUpdateModule: (module: Module) => void;
@@ -25,9 +27,11 @@ export function WorldCanvas({
   otherAvatars,
   modules,
   draftModule,
-  selectedModule,
-  onSelectModule,
+  selectedModules,
+  onSelectModules,
+  onToggleModuleSelection,
   onAddModule,
+  onEditModule,
   onMoveAvatar,
   onCheckRoomTransition,
   onUpdateModule,
@@ -45,6 +49,9 @@ export function WorldCanvas({
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [lastClickTime, setLastClickTime] = useState(0);
   const [lastClickedModule, setLastClickedModule] = useState<string | null>(null);
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selectionStart, setSelectionStart] = useState<{ x: number; y: number } | null>(null);
+  const [selectionEnd, setSelectionEnd] = useState<{ x: number; y: number } | null>(null);
   
   // Fixed world dimensions for consistent multiplayer experience
   const WORLD_WIDTH = 800;
@@ -160,14 +167,34 @@ export function WorldCanvas({
         return;
       }
 
-      // Single click with draft module - move it to clicked position
+      // Single click with draft module
       if (draftModule && !isDoubleClick) {
-        onUpdateModule({ ...draftModule, x, y });
+        // Check if clicking on the draft module itself
+        const distanceToDraft = Math.sqrt(Math.pow(x - draftModule.x, 2) + Math.pow(y - draftModule.y, 2));
+        const isDraftClick = distanceToDraft < Math.max(draftModule.width, draftModule.height) / 2 + 10;
+        
+        if (isDraftClick) {
+          // Clicking on draft - move it to clicked position
+          onUpdateModule({ ...draftModule, x, y });
+        } else {
+          // Clicking outside draft - confirm if within bounds
+          const halfWidth = draftModule.width / 2;
+          const halfHeight = draftModule.height / 2;
+          const isWithinBounds = 
+            draftModule.x - halfWidth >= 0 &&
+            draftModule.x + halfWidth <= WORLD_WIDTH &&
+            draftModule.y - halfHeight >= 0 &&
+            draftModule.y + halfHeight <= WORLD_HEIGHT;
+          
+          if (isWithinBounds) {
+            onConfirmModule();
+          }
+        }
         setLastClickTime(currentTime);
         return;
       }
 
-      // Ctrl+Click to select existing module
+      // Ctrl+Click to toggle module selection or edit if draft exists
       if (e.ctrlKey || e.metaKey) {
         const clickedModule = modules.find(m => {
           const distance = Math.sqrt(Math.pow(x - m.x, 2) + Math.pow(y - m.y, 2));
@@ -175,7 +202,13 @@ export function WorldCanvas({
         });
 
         if (clickedModule) {
-          onSelectModule(clickedModule);
+          // If no draft and no selection, edit the module
+          if (!draftModule && selectedModules.length === 0) {
+            onEditModule(clickedModule);
+          } else {
+            // Otherwise toggle selection
+            onToggleModuleSelection(clickedModule);
+          }
           setLastClickedModule(clickedModule.id);
         }
       } else {
@@ -235,40 +268,78 @@ export function WorldCanvas({
   };
 
   const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
-    // Middle mouse button (button 1)
+    // Middle mouse button (button 1) for panning
     if (e.button === 1) {
       e.preventDefault();
       setIsPanning(true);
       setPanStart({ x: e.clientX, y: e.clientY });
+      return;
+    }
+
+    // Left click with Ctrl for multi-select drag
+    if (e.button === 0 && (e.ctrlKey || e.metaKey) && mode === 'build' && !draftModule) {
+      const coords = clientToSVGCoords(e.clientX, e.clientY);
+      if (coords) {
+        setIsSelecting(true);
+        setSelectionStart(coords);
+        setSelectionEnd(coords);
+      }
     }
   };
 
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
-    if (!isPanning) return;
+    if (isPanning) {
+      const dx = e.clientX - panStart.x;
+      const dy = e.clientY - panStart.y;
 
-    const dx = e.clientX - panStart.x;
-    const dy = e.clientY - panStart.y;
+      // Convert pixel movement to viewBox units (accounting for zoom)
+      const viewBoxDx = -dx / zoom;
+      const viewBoxDy = -dy / zoom;
 
-    // Convert pixel movement to viewBox units (accounting for zoom)
-    const viewBoxDx = -dx / zoom;
-    const viewBoxDy = -dy / zoom;
+      setViewBoxOffset({
+        x: viewBoxOffset.x + viewBoxDx,
+        y: viewBoxOffset.y + viewBoxDy,
+      });
 
-    setViewBoxOffset({
-      x: viewBoxOffset.x + viewBoxDx,
-      y: viewBoxOffset.y + viewBoxDy,
-    });
+      setPanStart({ x: e.clientX, y: e.clientY });
+    }
 
-    setPanStart({ x: e.clientX, y: e.clientY });
+    if (isSelecting && selectionStart) {
+      const coords = clientToSVGCoords(e.clientX, e.clientY);
+      if (coords) {
+        setSelectionEnd(coords);
+      }
+    }
   };
 
   const handleMouseUp = (e: React.MouseEvent<SVGSVGElement>) => {
     if (e.button === 1) {
       setIsPanning(false);
     }
+
+    if (isSelecting && selectionStart && selectionEnd) {
+      // Calculate selection rectangle bounds
+      const minX = Math.min(selectionStart.x, selectionEnd.x);
+      const maxX = Math.max(selectionStart.x, selectionEnd.x);
+      const minY = Math.min(selectionStart.y, selectionEnd.y);
+      const maxY = Math.max(selectionStart.y, selectionEnd.y);
+
+      // Find all modules within the selection rectangle
+      const selectedInRect = modules.filter(m => {
+        return m.x >= minX && m.x <= maxX && m.y >= minY && m.y <= maxY;
+      });
+
+      onSelectModules(selectedInRect);
+      
+      // Reset selection state
+      setIsSelecting(false);
+      setSelectionStart(null);
+      setSelectionEnd(null);
+    }
   };
 
   const renderModule = (module: Module) => {
-    const isSelected = selectedModule?.id === module.id;
+    const isSelected = selectedModules.some(m => m.id === module.id);
     const halfWidth = module.width / 2;
     const halfHeight = module.height / 2;
     
@@ -499,6 +570,20 @@ export function WorldCanvas({
         
         {/* Render confirmed modules */}
         {modules.map(renderModule)}
+        
+        {/* Selection rectangle for multi-select */}
+        {isSelecting && selectionStart && selectionEnd && (
+          <rect
+            x={Math.min(selectionStart.x, selectionEnd.x)}
+            y={Math.min(selectionStart.y, selectionEnd.y)}
+            width={Math.abs(selectionEnd.x - selectionStart.x)}
+            height={Math.abs(selectionEnd.y - selectionStart.y)}
+            fill="rgba(59, 130, 246, 0.2)"
+            stroke="rgba(59, 130, 246, 0.8)"
+            strokeWidth={2}
+            strokeDasharray="5 3"
+          />
+        )}
         
         {/* Render draft module with editor controls */}
         {draftModule && (
