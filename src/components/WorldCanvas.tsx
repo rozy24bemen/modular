@@ -43,6 +43,8 @@ export function WorldCanvas({
   const [viewBoxOffset, setViewBoxOffset] = useState({ x: 0, y: 0 }); // Offset for panning
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [lastClickTime, setLastClickTime] = useState(0);
+  const [lastClickedModule, setLastClickedModule] = useState<string | null>(null);
   
   // Fixed world dimensions for consistent multiplayer experience
   const WORLD_WIDTH = 800;
@@ -137,10 +139,31 @@ export function WorldCanvas({
     if (!coords) return;
 
     const { x, y } = coords;
+    const currentTime = Date.now();
+    const isDoubleClick = currentTime - lastClickTime < 300;
 
     if (mode === 'build') {
-      // Don't create new module if already customizing one
+      // Check if double-clicking on draft module to confirm
+      if (draftModule && isDoubleClick) {
+        // Check if module is within bounds before confirming
+        const halfWidth = draftModule.width / 2;
+        const halfHeight = draftModule.height / 2;
+        const isWithinBounds = 
+          draftModule.x - halfWidth >= 0 &&
+          draftModule.x + halfWidth <= WORLD_WIDTH &&
+          draftModule.y - halfHeight >= 0 &&
+          draftModule.y + halfHeight <= WORLD_HEIGHT;
+        
+        if (isWithinBounds) {
+          onConfirmModule();
+        }
+        return;
+      }
+
+      // If customizing a module, move it to clicked position
       if (draftModule) {
+        onUpdateModule({ ...draftModule, x, y });
+        setLastClickTime(currentTime);
         return;
       }
 
@@ -151,10 +174,21 @@ export function WorldCanvas({
       });
 
       if (clickedModule) {
+        // Double click on confirmed module - do nothing (no confirmation needed)
+        if (isDoubleClick && lastClickedModule === clickedModule.id) {
+          // Already confirmed modules don't need re-confirmation
+          return;
+        }
         onSelectModule(clickedModule);
+        setLastClickedModule(clickedModule.id);
       } else {
-        onAddModule(x, y);
+        // Only create new module on single click, not double click
+        if (!isDoubleClick) {
+          onAddModule(x, y);
+          setLastClickedModule(null);
+        }
       }
+      setLastClickTime(currentTime);
     } else {
       // Explore mode - click to move to position
       setTargetPosition({ x, y });

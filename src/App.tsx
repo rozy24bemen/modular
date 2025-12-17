@@ -114,6 +114,7 @@ export default function App() {
 
   // Modules placed in the world (loaded from database)
   const [modules, setModules] = useState<Module[]>([]);
+  const [modulesHistory, setModulesHistory] = useState<Module[][]>([]); // History for undo
 
   const [selectedModule, setSelectedModule] = useState<Module | null>(null);
   const [draftModule, setDraftModule] = useState<Module | null>(null); // Module being built (not confirmed yet)
@@ -192,6 +193,13 @@ export default function App() {
         return;
       }
 
+      // Ctrl/Cmd + Z: Undo last action
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault();
+        handleUndo();
+        console.log('↩️ Undo');
+      }
+
       // Ctrl/Cmd + C: Copy selected module to clipboard
       if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedModule && !draftModule) {
         e.preventDefault();
@@ -249,7 +257,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedModule, draftModule, modules, mode, showShortcuts, copiedModule]);
+  }, [selectedModule, draftModule, modules, mode, showShortcuts, copiedModule, modulesHistory]);
 
   const getRoomName = (coords: RoomCoords): string => {
     if (coords.x === 0 && coords.y === 0) return 'Plaza Central';
@@ -314,6 +322,9 @@ export default function App() {
     
     console.log('✅ Confirming module:', draftModule.id);
     
+    // Save current state to history
+    setModulesHistory([...modulesHistory, modules]);
+    
     // Remove draft flag and add to confirmed modules
     const confirmedModule = { ...draftModule, isDraft: false };
     setModules([...modules, confirmedModule]);
@@ -334,11 +345,29 @@ export default function App() {
   };
 
   const handleDeleteModule = (id: string) => {
+    // Save current state to history
+    setModulesHistory([...modulesHistory, modules]);
+    
     setModules(modules.filter(m => m.id !== id));
     setSelectedModule(null);
     
     // Emit to multiplayer server
     emitModuleDelete(id);
+  };
+
+  const handleUndo = () => {
+    if (modulesHistory.length === 0) return;
+    
+    // Get last state from history
+    const previousState = modulesHistory[modulesHistory.length - 1];
+    setModules(previousState);
+    
+    // Remove last state from history
+    setModulesHistory(modulesHistory.slice(0, -1));
+    
+    // Clear selection
+    setSelectedModule(null);
+    setDraftModule(null);
   };
 
   const handleSendMessage = (message: string) => {
