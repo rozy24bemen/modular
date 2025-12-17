@@ -63,6 +63,16 @@ export function DraftModuleEditor({
         // Use current visual position (tempPosition if exists, otherwise draftModule)
         const currentX = tempPosition?.x ?? draftModule.x;
         const currentY = tempPosition?.y ?? draftModule.y;
+        console.log('🎯 DRAG START:', {
+          clientX: e.clientX,
+          clientY: e.clientY,
+          svgX: svgCoords.x,
+          svgY: svgCoords.y,
+          moduleX: currentX,
+          moduleY: currentY,
+          offsetX: svgCoords.x - currentX,
+          offsetY: svgCoords.y - currentY,
+        });
         setDragStart({
           x: svgCoords.x - currentX,  // Store offset from current visual center
           y: svgCoords.y - currentY,
@@ -93,16 +103,24 @@ export function DraftModuleEditor({
         const newX = svgCoords.x - dragStart.x;
         const newY = svgCoords.y - dragStart.y;
 
-        // Clamp to canvas bounds
+        console.log('🚀 DRAG MOVE:', {
+          clientX: e.clientX,
+          clientY: e.clientY,
+          svgX: svgCoords.x,
+          svgY: svgCoords.y,
+          offsetX: dragStart.x,
+          offsetY: dragStart.y,
+          newX,
+          newY,
+        });
+
         const currentWidth = tempPosition?.width ?? draftModule.width;
         const currentHeight = tempPosition?.height ?? draftModule.height;
-        const clampedX = Math.max(currentWidth / 2, Math.min(canvasWidth - currentWidth / 2, newX));
-        const clampedY = Math.max(currentHeight / 2, Math.min(canvasHeight - currentHeight / 2, newY));
 
         // Update local state immediately for smooth visual feedback
         setTempPosition({
-          x: clampedX,
-          y: clampedY,
+          x: newX,
+          y: newY,
           width: currentWidth,
           height: currentHeight,
         });
@@ -162,6 +180,12 @@ export function DraftModuleEditor({
       
       // On mouse up, commit changes to parent
       if (tempPosition) {
+        console.log('✅ DRAG END - Final position:', {
+          finalX: tempPosition.x,
+          finalY: tempPosition.y,
+          finalWidth: tempPosition.width,
+          finalHeight: tempPosition.height,
+        });
         onUpdate({
           ...draftModule,
           x: tempPosition.x,
