@@ -506,6 +506,30 @@ export default function App() {
             <Hammer size={16} />
             {mode === 'build' ? 'Modo Construcción' : 'Modo Exploración'}
           </button>
+          
+          {/* Auth Button */}
+          {isGuest ? (
+            <button
+              onClick={() => setShowAuthDialog(true)}
+              className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg flex items-center gap-2 transition-colors border border-slate-600"
+            >
+              <LogIn size={16} />
+              Iniciar Sesión
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <div className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm flex items-center gap-1">
+                <Users size={14} />
+                {profile?.username}
+              </div>
+              <button
+                onClick={signOut}
+                className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg flex items-center gap-2 transition-colors"
+              >
+                <LogOut size={16} />
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
@@ -643,35 +667,6 @@ export default function App() {
 
       {/* Auth Dialog */}
       <AuthDialog open={showAuthDialog} onOpenChange={setShowAuthDialog} />
-
-      {/* Auth Button - Top Right */}
-      <div className="absolute top-4 right-4 z-10">
-        {isGuest ? (
-          <Button
-            onClick={() => setShowAuthDialog(true)}
-            variant="outline"
-            className="bg-slate-800/90 backdrop-blur-sm border-slate-600 text-white hover:bg-slate-700"
-          >
-            <LogIn size={16} className="mr-2" />
-            Iniciar Sesión
-          </Button>
-        ) : (
-          <div className="flex items-center gap-2">
-            <div className="bg-slate-800/90 backdrop-blur-sm border border-slate-600 px-3 py-2 rounded-lg text-white text-sm">
-              <Users size={14} className="inline mr-1" />
-              {profile?.username}
-            </div>
-            <Button
-              onClick={signOut}
-              variant="outline"
-              size="sm"
-              className="bg-slate-800/90 backdrop-blur-sm border-slate-600 text-white hover:bg-slate-700"
-            >
-              <LogOut size={14} />
-            </Button>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
