@@ -139,6 +139,11 @@ export function WorldCanvas({
     const { x, y } = coords;
 
     if (mode === 'build') {
+      // Don't create new module if already customizing one
+      if (draftModule) {
+        return;
+      }
+
       // Check if clicking on existing module
       const clickedModule = modules.find(m => {
         const distance = Math.sqrt(Math.pow(x - m.x, 2) + Math.pow(y - m.y, 2));

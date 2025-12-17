@@ -63,16 +63,6 @@ export function DraftModuleEditor({
         // Use current visual position (tempPosition if exists, otherwise draftModule)
         const currentX = tempPosition?.x ?? draftModule.x;
         const currentY = tempPosition?.y ?? draftModule.y;
-        console.log('🎯 DRAG START:', {
-          clientX: e.clientX,
-          clientY: e.clientY,
-          svgX: svgCoords.x,
-          svgY: svgCoords.y,
-          moduleX: currentX,
-          moduleY: currentY,
-          offsetX: svgCoords.x - currentX,
-          offsetY: svgCoords.y - currentY,
-        });
         setDragStart({
           x: svgCoords.x - currentX,  // Store offset from current visual center
           y: svgCoords.y - currentY,
@@ -102,17 +92,6 @@ export function DraftModuleEditor({
         // Apply the offset stored in dragStart (distance from center)
         const newX = svgCoords.x - dragStart.x;
         const newY = svgCoords.y - dragStart.y;
-
-        console.log('🚀 DRAG MOVE:', {
-          clientX: e.clientX,
-          clientY: e.clientY,
-          svgX: svgCoords.x,
-          svgY: svgCoords.y,
-          offsetX: dragStart.x,
-          offsetY: dragStart.y,
-          newX,
-          newY,
-        });
 
         const currentWidth = tempPosition?.width ?? draftModule.width;
         const currentHeight = tempPosition?.height ?? draftModule.height;
@@ -180,12 +159,6 @@ export function DraftModuleEditor({
       
       // On mouse up, commit changes to parent
       if (tempPosition) {
-        console.log('✅ DRAG END - Final position:', {
-          finalX: tempPosition.x,
-          finalY: tempPosition.y,
-          finalWidth: tempPosition.width,
-          finalHeight: tempPosition.height,
-        });
         onUpdate({
           ...draftModule,
           x: tempPosition.x,
@@ -258,6 +231,8 @@ export function DraftModuleEditor({
             stroke="#fff"
             strokeWidth="2"
             strokeDasharray="5,5"
+            onMouseDown={(e) => handleMouseDown(e)}
+            style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
           />
         )}
         {draftModule.shape === 'circle' && (
@@ -270,6 +245,8 @@ export function DraftModuleEditor({
             stroke="#fff"
             strokeWidth="2"
             strokeDasharray="5,5"
+            onMouseDown={(e) => handleMouseDown(e)}
+            style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
           />
         )}
         {draftModule.shape === 'triangle' && (
@@ -281,6 +258,8 @@ export function DraftModuleEditor({
             stroke="#fff"
             strokeWidth="2"
             strokeDasharray="5,5"
+            onMouseDown={(e) => handleMouseDown(e)}
+            style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
           />
         )}
       </g>
