@@ -43,8 +43,8 @@ export function DraftModuleEditor({
     e.stopPropagation();
     e.preventDefault();
     
-    // Get SVG element for coordinate conversion
-    const svg = (e.target as SVGElement).ownerSVGElement;
+    // Use the same SVG selector as handleMouseMove to ensure consistency
+    const svg = document.querySelector('.world-canvas-container svg') as SVGSVGElement;
     if (!svg) return;
     
     if (handle) {
