@@ -29,6 +29,7 @@ export function DraftModuleEditor({
   // Local state for smooth dragging without parent re-render lag
   const [tempPosition, setTempPosition] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [justFinishedInteraction, setJustFinishedInteraction] = useState(false);
+  const [dragTimeout, setDragTimeout] = useState<NodeJS.Timeout | null>(null);
 
   const clientToSVGCoords = (clientX: number, clientY: number, svgElement: SVGSVGElement) => {
     const pt = svgElement.createSVGPoint();
@@ -56,18 +57,21 @@ export function DraftModuleEditor({
         y: e.clientY,
       });
     } else {
-      // Dragging - calculate offset from module center using SVG coords
-      setIsDragging(true);
-      const svgCoords = clientToSVGCoords(e.clientX, e.clientY, svg);
-      if (svgCoords) {
-        // Use current visual position (tempPosition if exists, otherwise draftModule)
-        const currentX = tempPosition?.x ?? draftModule.x;
-        const currentY = tempPosition?.y ?? draftModule.y;
-        setDragStart({
-          x: svgCoords.x - currentX,  // Store offset from current visual center
-          y: svgCoords.y - currentY,
-        });
-      }
+      // Dragging - delay slightly to allow double-click detection
+      const timeout = setTimeout(() => {
+        setIsDragging(true);
+        const svgCoords = clientToSVGCoords(e.clientX, e.clientY, svg);
+        if (svgCoords) {
+          // Use current visual position (tempPosition if exists, otherwise draftModule)
+          const currentX = tempPosition?.x ?? draftModule.x;
+          const currentY = tempPosition?.y ?? draftModule.y;
+          setDragStart({
+            x: svgCoords.x - currentX,  // Store offset from current visual center
+            y: svgCoords.y - currentY,
+          });
+        }
+      }, 150); // Small delay to detect double-click
+      setDragTimeout(timeout);
     }
     
     // Store initial module with current visual position
@@ -169,6 +173,12 @@ export function DraftModuleEditor({
         setTempPosition(null);
       }
       
+      // Clear drag timeout if mouse released before drag starts
+      if (dragTimeout) {
+        clearTimeout(dragTimeout);
+        setDragTimeout(null);
+      }
+
       setIsDragging(false);
       setIsResizing(false);
       setResizeHandle(null);
@@ -196,8 +206,12 @@ export function DraftModuleEditor({
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+      // Clear timeout on cleanup
+      if (dragTimeout) {
+        clearTimeout(dragTimeout);
+      }
     };
-  }, [isDragging, isResizing, resizeHandle, dragStart, initialModule, draftModule, onUpdate, canvasWidth, canvasHeight, tempPosition]);
+  }, [isDragging, isResizing, resizeHandle, dragStart, initialModule, draftModule, onUpdate, canvasWidth, canvasHeight, tempPosition, dragTimeout]);
 
   const handleSize = 8;
   

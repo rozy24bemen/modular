@@ -143,9 +143,8 @@ export function WorldCanvas({
     const isDoubleClick = currentTime - lastClickTime < 300;
 
     if (mode === 'build') {
-      // Check if double-clicking on draft module to confirm
-      if (draftModule && isDoubleClick) {
-        // Check if module is within bounds before confirming
+      // Double-click anywhere with draft module - confirm if within bounds
+      if (isDoubleClick && draftModule) {
         const halfWidth = draftModule.width / 2;
         const halfHeight = draftModule.height / 2;
         const isWithinBounds = 
@@ -157,11 +156,12 @@ export function WorldCanvas({
         if (isWithinBounds) {
           onConfirmModule();
         }
+        setLastClickTime(currentTime);
         return;
       }
 
-      // If customizing a module, move it to clicked position
-      if (draftModule) {
+      // Single click with draft module - move it to clicked position
+      if (draftModule && !isDoubleClick) {
         onUpdateModule({ ...draftModule, x, y });
         setLastClickTime(currentTime);
         return;
@@ -174,11 +174,6 @@ export function WorldCanvas({
       });
 
       if (clickedModule) {
-        // Double click on confirmed module - do nothing (no confirmation needed)
-        if (isDoubleClick && lastClickedModule === clickedModule.id) {
-          // Already confirmed modules don't need re-confirmation
-          return;
-        }
         onSelectModule(clickedModule);
         setLastClickedModule(clickedModule.id);
       } else {
