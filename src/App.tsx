@@ -587,10 +587,10 @@ export default function App() {
           )}
         </div>
 
-        {/* Right Sidebar - Module Editor (Build Mode) */}
+        {/* Right Sidebar - Module Editor (Build Mode) - Always visible */}
         {mode === 'build' && (
           <ModuleEditor
-            selectedModule={selectedModule}
+            selectedModule={selectedModule || draftModule}
             onUpdateModule={handleUpdateModule}
           />
         )}

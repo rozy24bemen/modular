@@ -14,8 +14,13 @@ export function ModuleEditor({ selectedModule, onUpdateModule }: ModuleEditorPro
           <div className="w-16 h-16 bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-3">
             <Zap size={32} className="text-slate-500" />
           </div>
-          <p>Selecciona un módulo</p>
-          <p className="text-xs mt-1">o crea uno nuevo en el canvas</p>
+          <p className="font-semibold mb-2">Editor de Módulos</p>
+          <div className="text-xs space-y-1 text-left bg-slate-700/50 p-3 rounded">
+            <p>• Click para crear módulo</p>
+            <p>• Doble click para confirmar</p>
+            <p>• Ctrl+Click para seleccionar</p>
+            <p>• Click derecho para cancelar</p>
+          </div>
         </div>
       </div>
     );

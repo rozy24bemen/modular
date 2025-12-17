@@ -167,17 +167,19 @@ export function WorldCanvas({
         return;
       }
 
-      // Check if clicking on existing module
-      const clickedModule = modules.find(m => {
-        const distance = Math.sqrt(Math.pow(x - m.x, 2) + Math.pow(y - m.y, 2));
-        return distance < Math.max(m.width, m.height) / 2 + 10;
-      });
+      // Ctrl+Click to select existing module
+      if (e.ctrlKey || e.metaKey) {
+        const clickedModule = modules.find(m => {
+          const distance = Math.sqrt(Math.pow(x - m.x, 2) + Math.pow(y - m.y, 2));
+          return distance < Math.max(m.width, m.height) / 2 + 10;
+        });
 
-      if (clickedModule) {
-        onSelectModule(clickedModule);
-        setLastClickedModule(clickedModule.id);
+        if (clickedModule) {
+          onSelectModule(clickedModule);
+          setLastClickedModule(clickedModule.id);
+        }
       } else {
-        // Only create new module on single click, not double click
+        // Regular click creates new module (not double click)
         if (!isDoubleClick) {
           onAddModule(x, y);
           setLastClickedModule(null);
